@@ -11,10 +11,13 @@ Documentation for the Document Ledger pipeline — from external signals to trus
 
 ## Diagrams
 
-| Diagram | File |
-| ------- | ---- |
-| C4 Context | [diagrams/c4/c4-context.png](diagrams/c4/c4-context.png) |
-| C4 Container | [diagrams/c4/c4-container.png](diagrams/c4/c4-container.png) |
+C4 model diagrams ([source and design notes](diagrams/c4/README.md)):
+
+| Level | Source | Export |
+| ----- | ------ | ------ |
+| Context (L1) | [diagrams/c4/c4-context.mmd](diagrams/c4/c4-context.mmd) | [c4-context.png](diagrams/c4/c4-context.png) |
+| Container (L2) | [diagrams/c4/c4-container.mmd](diagrams/c4/c4-container.mmd) | [c4-container.png](diagrams/c4/c4-container.png) |
+| Component — Analysis Engine (L3) | [diagrams/c4/c4-component-analysis-engine.mmd](diagrams/c4/c4-component-analysis-engine.mmd) | — |
 
 ## Modules
 

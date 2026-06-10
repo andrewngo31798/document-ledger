@@ -1,0 +1,32 @@
+C4Context
+    title System Context — Document Ledger
+
+    Person(internalUsers, "Internal Users", "Product managers, business analysts, architects, and engineers who create and approve decisions")
+    Person(reviewers, "Reviewers", "Validate insight packages and approve decisions for the ledger")
+
+    System(documentLedger, "Document Ledger", "Captures signals from external sources, processes and classifies decisions, runs analysis, and publishes approved knowledge as a trusted source of truth")
+
+    System_Ext(jira, "Jira", "Tickets, epics, and issue updates")
+    System_Ext(confluence, "Confluence", "Pages, specs, and documentation")
+    System_Ext(collaboration, "Slack / Teams", "Discussions and channel messages")
+    System_Ext(vcs, "GitHub / GitLab", "Pull requests and code review comments")
+    System_Ext(meetings, "Meeting Systems", "Transcripts and recordings")
+    System_Ext(manualOps, "Scheduler / Manual UI", "Scheduled scans and operator triggers")
+
+    System_Ext(aiAgents, "AI Agents", "Autonomous assistants and copilots")
+    System_Ext(enterpriseSearch, "Enterprise Search", "Company-wide knowledge search")
+    System_Ext(ragSystems, "RAG Systems", "Retrieval-augmented generation applications")
+
+    Rel(internalUsers, documentLedger, "Triggers sync and monitors pipeline")
+    Rel(reviewers, documentLedger, "Reviews, edits, and approves decisions")
+    Rel(manualOps, documentLedger, "Sends manual and scheduled triggers")
+
+    Rel(jira, documentLedger, "Sends webhooks and source content")
+    Rel(confluence, documentLedger, "Sends webhooks and source content")
+    Rel(collaboration, documentLedger, "Sends webhooks and source content")
+    Rel(vcs, documentLedger, "Sends repository and PR events")
+    Rel(meetings, documentLedger, "Provides meeting transcripts")
+
+    Rel(documentLedger, aiAgents, "Provides trusted decision context")
+    Rel(documentLedger, enterpriseSearch, "Indexes approved decisions")
+    Rel(documentLedger, ragSystems, "Provides structured RAG context")

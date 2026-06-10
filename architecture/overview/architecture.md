@@ -171,3 +171,17 @@ AI Systems / Search / Agent / RAG
 | 08 | **Consumer API** | Expose trusted knowledge to downstream systems | Ledger record | API response / RAG context |
 
 See [module-responsibility-matrix.md](module-responsibility-matrix.md) for the full matrix, including Analysis Engine sub-components.
+
+---
+
+## 4. C4 model diagrams
+
+Formal C4 diagrams are maintained as version-controlled Mermaid source under [`../diagrams/c4/`](../diagrams/c4/README.md).
+
+| Level | Diagram | Purpose |
+| ----- | ------- | ------- |
+| L1 — Context | [c4-context.mmd](../diagrams/c4/c4-context.mmd) | System boundary, users, external sources, AI consumers |
+| L2 — Container | [c4-container.mmd](../diagrams/c4/c4-container.mmd) | Deployable containers, data stores, async event flow |
+| L3 — Component | [c4-component-analysis-engine.mmd](../diagrams/c4/c4-component-analysis-engine.mmd) | Analysis Engine sub-components |
+
+The container diagram reflects the canonical pipeline order and event flow defined in this document. Decision candidate detection remains a capability inside Knowledge Processing Engine, not a separate container.

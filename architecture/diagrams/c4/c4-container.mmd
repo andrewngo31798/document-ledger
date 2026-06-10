@@ -1,0 +1,57 @@
+C4Container
+    title Container Diagram — Document Ledger
+
+    Person(reviewer, "Reviewer", "Validates insight packages and approves decisions")
+    Person(operator, "Operator", "Triggers sync jobs and monitors the pipeline")
+
+    System_Ext(jira, "Jira", "External ticket source")
+    System_Ext(confluence, "Confluence", "External documentation source")
+    System_Ext(otherSources, "Other Sources", "Slack, GitHub, meetings, files")
+    System_Ext(aiConsumers, "AI Systems", "Agents, enterprise search, RAG, copilots")
+
+    System_Boundary(documentLedgerBoundary, "Document Ledger") {
+
+        Container(apiGateway, "API Gateway", "HTTP reverse proxy", "Routes external webhooks and operator requests")
+
+        Container(signalIntake, "Signal Intake Engine", "Backend service", "Validates triggers, creates jobs, publishes source.triggered")
+        Container(queue, "Queue / Event Bus", "Kafka / SQS / BullMQ", "Buffers and routes async pipeline events")
+        Container(knowledgeProcessing, "Knowledge Processing Engine", "Worker service", "Fetches raw content, normalizes text, detects decision candidates")
+        Container(classification, "Classification Engine", "Worker service", "Classifies business vs technical decisions")
+        Container(analysis, "Analysis Engine", "Worker service", "Orchestrates impact, similarity, forecast, and recommendation sub-engines")
+        Container(reviewPortal, "Review & Approval Portal", "Web application", "Human review, edit, approve, and reject workflow")
+        Container(ledger, "Decision Ledger", "Backend service", "Stores approved decisions with versioning and audit trail")
+        Container(consumerApi, "Consumer API", "REST / GraphQL API", "Search, retrieval, and RAG context for downstream systems")
+
+        ContainerDb(postgres, "PostgreSQL", "Relational database", "Jobs, structured knowledge, ledger records, audit logs")
+        ContainerDb(redis, "Redis", "In-memory store", "Idempotency keys and short-lived state")
+        ContainerDb(vectorDb, "Vector DB", "Embedding index", "Similarity search and semantic retrieval")
+        ContainerDb(objectStore, "Object Storage", "Blob store", "Raw source content and artifacts")
+    }
+
+    Rel(operator, apiGateway, "Manual trigger and schedule", "HTTPS")
+    Rel(jira, apiGateway, "Webhook", "HTTPS")
+    Rel(confluence, apiGateway, "Webhook", "HTTPS")
+    Rel(otherSources, apiGateway, "Webhook / API", "HTTPS")
+
+    Rel(apiGateway, signalIntake, "Forwards trigger requests", "HTTP")
+    Rel(signalIntake, queue, "Publishes source.triggered", "async")
+    Rel(queue, knowledgeProcessing, "Delivers processing jobs", "async")
+    Rel(knowledgeProcessing, queue, "Publishes source.ingested", "async")
+    Rel(queue, classification, "Delivers ingested knowledge", "async")
+    Rel(classification, queue, "Publishes decision.classified", "async")
+    Rel(queue, analysis, "Delivers classified decisions", "async")
+    Rel(analysis, queue, "Publishes insight.ready", "async")
+    Rel(queue, reviewPortal, "Notifies insight.ready", "async")
+    Rel(reviewer, reviewPortal, "Reviews and approves", "HTTPS")
+    Rel(reviewPortal, queue, "Publishes decision.approved", "async")
+    Rel(queue, ledger, "Delivers approved decisions", "async")
+    Rel(ledger, consumerApi, "Exposes read API", "HTTP")
+    Rel(consumerApi, aiConsumers, "Search and RAG context", "HTTPS")
+
+    Rel(signalIntake, postgres, "Writes trigger audit logs")
+    Rel(signalIntake, redis, "Checks idempotency keys")
+    Rel(knowledgeProcessing, postgres, "Stores structured knowledge")
+    Rel(knowledgeProcessing, objectStore, "Stores raw content")
+    Rel(analysis, vectorDb, "Reads and writes embeddings")
+    Rel(ledger, postgres, "Persists ledger records")
+    Rel(ledger, vectorDb, "Indexes searchable embeddings")

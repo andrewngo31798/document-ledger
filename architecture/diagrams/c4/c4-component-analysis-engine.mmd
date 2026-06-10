@@ -1,0 +1,36 @@
+C4Component
+    title Component Diagram — Analysis Engine
+
+    Container_Ext(classification, "Classification Engine", "Worker service", "Produces classified decisions")
+    Container_Ext(reviewPortal, "Review & Approval Portal", "Web application", "Consumes insight packages")
+    Container_Ext(vectorDb, "Vector DB", "Embedding index", "Stores decision embeddings")
+    Container_Ext(ledger, "Decision Ledger", "Backend service", "Historical approved decisions")
+
+    Container_Boundary(analysisBoundary, "Analysis Engine") {
+        Component(jobConsumer, "Job Consumer", "Worker handler", "Consumes decision.classified events from Queue / Event Bus")
+        Component(impactEngine, "Impact Engine", "Analysis sub-engine", "Dependency analysis and graph traversal")
+        Component(similarityEngine, "Similarity Engine", "Analysis sub-engine", "Embedding search and vector similarity")
+        Component(forecastEngine, "Forecast Engine", "Analysis sub-engine", "Pattern analysis and risk prediction")
+        Component(recommendationEngine, "Recommendation Engine", "Analysis sub-engine", "Reasoning, rules, and LLM recommendations")
+        Component(insightAggregator, "Insight Aggregator", "Orchestrator", "Merges sub-engine outputs into an insight package")
+        Component(eventPublisher, "Event Publisher", "Publisher", "Publishes insight.ready events")
+    }
+
+    Rel(classification, jobConsumer, "Sends classified decision", "async")
+    Rel(jobConsumer, impactEngine, "Invokes")
+    Rel(jobConsumer, similarityEngine, "Invokes")
+    Rel(similarityEngine, vectorDb, "Queries embeddings")
+    Rel(similarityEngine, ledger, "Reads historical decisions")
+    Rel(impactEngine, forecastEngine, "Provides impact map")
+    Rel(similarityEngine, forecastEngine, "Provides similar decisions")
+    Rel(jobConsumer, forecastEngine, "Invokes")
+    Rel(impactEngine, recommendationEngine, "Provides impact map")
+    Rel(similarityEngine, recommendationEngine, "Provides similar decisions")
+    Rel(forecastEngine, recommendationEngine, "Provides forecast report")
+    Rel(jobConsumer, recommendationEngine, "Invokes")
+    Rel(impactEngine, insightAggregator, "Contributes impact map")
+    Rel(similarityEngine, insightAggregator, "Contributes similar decisions")
+    Rel(forecastEngine, insightAggregator, "Contributes forecast report")
+    Rel(recommendationEngine, insightAggregator, "Contributes recommendations")
+    Rel(insightAggregator, eventPublisher, "Hands off insight package")
+    Rel(eventPublisher, reviewPortal, "Publishes insight.ready", "async")
