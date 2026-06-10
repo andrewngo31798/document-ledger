@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "document-ledger/schemas/insight-package",
+  "title": "Insight Package",
+  "description": "Aggregated output from Analysis Engine consumed by Review & Approval Portal.",
+  "type": "object",
+  "required": [
+    "insight_package_id",
+    "classified_decision_id",
+    "tenant_id",
+    "analysis_profile",
+    "decision_summary",
+    "provenance",
+    "quality"
+  ],
+  "properties": {
+    "insight_package_id": { "type": "string", "format": "uuid" },
+    "classified_decision_id": { "type": "string", "format": "uuid" },
+    "knowledge_id": { "type": "string", "format": "uuid" },
+    "decision_candidate_id": { "type": "string", "format": "uuid" },
+    "tenant_id": { "type": "string" },
+    "analysis_profile": {
+      "type": "string",
+      "enum": ["full_analysis", "standard_analysis", "lightweight_analysis", "review_first"]
+    },
+    "decision_summary": {
+      "type": "object",
+      "required": ["text", "domain", "categories"],
+      "properties": {
+        "text": { "type": "string" },
+        "domain": { "type": "string" },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "evidence": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string" },
+            "start_offset": { "type": "integer" },
+            "end_offset": { "type": "integer" },
+            "source_url": { "type": "string", "format": "uri" }
+          }
+        }
+      }
+    },
+    "impact_map": {
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string" },
+        "blast_radius_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "affected_systems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "impact_level"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "impact_level": { "type": "string", "enum": ["direct", "indirect", "transitive"] },
+              "hop_distance": { "type": "integer", "minimum": 0 },
+              "evidence": { "type": "string" }
+            }
+          }
+        },
+        "affected_teams": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "impact_type": { "type": "string" },
+              "rationale": { "type": "string" }
+            }
+          }
+        },
+        "risk_dimensions": {
+          "type": "object",
+          "properties": {
+            "technical": { "type": "number" },
+            "delivery": { "type": "number" },
+            "people": { "type": "number" },
+            "compliance": { "type": "number" },
+            "financial": { "type": "number" }
+          }
+        }
+      }
+    },
+    "similar_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ledger_record_id", "title", "similarity_score"],
+        "properties": {
+          "ledger_record_id": { "type": "string" },
+          "title": { "type": "string" },
+          "similarity_score": { "type": "number" },
+          "relationship": {
+            "type": "string",
+            "enum": ["precedent", "supersedes_candidate", "conflicts", "related", "duplicate_risk"]
+          },
+          "approved_at": { "type": "string", "format": "date-time" },
+          "summary": { "type": "string" },
+          "evidence_snippet": { "type": "string" }
+        }
+      }
+    },
+    "forecast_report": {
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string" },
+        "confidence_band": { "type": "string", "enum": ["low", "medium", "high"] },
+        "predicted_outcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["outcome", "likelihood", "time_horizon"],
+            "properties": {
+              "outcome": { "type": "string" },
+              "likelihood": { "type": "string", "enum": ["unlikely", "possible", "likely", "very_likely"] },
+              "time_horizon": { "type": "string" },
+              "risk_type": { "type": "string" },
+              "mitigation_hint": { "type": "string" },
+              "grounded_in": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "rollback_considerations": { "type": "string" }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "action", "priority"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["governance", "documentation", "review", "implementation", "communication", "rollback_plan"]
+          },
+          "action": { "type": "string" },
+          "priority": { "type": "string", "enum": ["required", "recommended", "optional"] },
+          "rationale": { "type": "string" },
+          "owner_hint": { "type": "string" },
+          "evidence_refs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["sub_engines_run", "model_versions", "duration_ms"],
+      "properties": {
+        "sub_engines_run": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["impact", "similarity", "forecast", "recommendation"] }
+        },
+        "model_versions": { "type": "object" },
+        "graph_queries": { "type": "integer" },
+        "retrieval_queries": { "type": "integer" },
+        "llm_calls": { "type": "integer" },
+        "duration_ms": { "type": "integer" }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": ["completeness_score", "grounding_score"],
+      "properties": {
+        "completeness_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "grounding_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "review_priority": { "type": "string", "enum": ["low", "normal", "high", "urgent"] },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

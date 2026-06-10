@@ -1,0 +1,46 @@
+flowchart TB
+    subgraph input [Input]
+        queueIn["Queue / Event Bus<br/>source.ingested"]
+        knowledgeStore[(Knowledge Store<br/>PostgreSQL)]
+    end
+
+    subgraph ce [Classification Engine]
+        consumer[Job Consumer]
+        loader[Knowledge Loader]
+        orchestrator[Classification Orchestrator]
+        rules[Rule Engine]
+        classifier[Domain Classifier]
+        llm[LLM Classifier]
+        tagger[Tag Assigner]
+        scorer[Confidence Calibrator]
+        router[Analysis Router]
+        writer[Classification Store Writer]
+        publisher[Event Publisher]
+        audit[Audit Logger]
+    end
+
+    subgraph output [Output]
+        queueOut["Queue / Event Bus<br/>decision.classified"]
+        analysis[Analysis Engine]
+        classStore[(classified_decisions<br/>PostgreSQL)]
+    end
+
+    queueIn --> consumer
+    consumer --> loader
+    knowledgeStore --> loader
+    loader --> orchestrator
+    orchestrator --> rules
+    rules -->|"confidence >= threshold"| tagger
+    rules -->|"low confidence"| classifier
+    classifier -->|"still ambiguous"| llm
+    classifier --> tagger
+    llm --> tagger
+    tagger --> scorer
+    scorer --> router
+    router --> writer
+    writer --> classStore
+    writer --> publisher
+    publisher --> queueOut
+    queueOut --> analysis
+    orchestrator --> audit
+    router --> audit

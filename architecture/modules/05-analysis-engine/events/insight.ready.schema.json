@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "document-ledger/events/insight.ready",
+  "title": "insight.ready",
+  "description": "Event published by Analysis Engine when an insight package is ready for human review.",
+  "type": "object",
+  "required": [
+    "event_type",
+    "event_id",
+    "occurred_at",
+    "tenant_id",
+    "job_id",
+    "trace_id",
+    "payload"
+  ],
+  "properties": {
+    "event_type": { "const": "insight.ready" },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string" },
+    "job_id": { "type": "string", "format": "uuid" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": [
+        "insight_package_id",
+        "classified_decision_id",
+        "analysis_profile",
+        "summary",
+        "quality"
+      ],
+      "properties": {
+        "insight_package_id": { "type": "string", "format": "uuid" },
+        "classified_decision_id": { "type": "string", "format": "uuid" },
+        "knowledge_id": { "type": "string", "format": "uuid" },
+        "decision_candidate_id": { "type": "string", "format": "uuid" },
+        "analysis_profile": {
+          "type": "string",
+          "enum": ["full_analysis", "standard_analysis", "lightweight_analysis", "review_first"]
+        },
+        "summary": {
+          "type": "object",
+          "required": ["decision_text", "domain", "categories"],
+          "properties": {
+            "decision_text": { "type": "string" },
+            "domain": { "type": "string" },
+            "categories": { "type": "array", "items": { "type": "string" } },
+            "impact_headline": { "type": "string" },
+            "top_recommendation": { "type": "string" }
+          }
+        },
+        "quality": {
+          "type": "object",
+          "required": ["completeness_score", "review_priority"],
+          "properties": {
+            "completeness_score": { "type": "number" },
+            "grounding_score": { "type": "number" },
+            "review_priority": { "type": "string", "enum": ["low", "normal", "high", "urgent"] },
+            "sub_engines_run": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "processing": {
+          "type": "object",
+          "properties": {
+            "duration_ms": { "type": "integer" },
+            "llm_calls": { "type": "integer" }
+          }
+        }
+      }
+    }
+  }
+}

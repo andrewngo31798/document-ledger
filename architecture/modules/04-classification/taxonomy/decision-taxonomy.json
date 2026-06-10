@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "document-ledger/taxonomy/decision-taxonomy",
+  "title": "Document Ledger Decision Taxonomy",
+  "description": "Canonical classification labels for the Classification Engine. Version 1.0.",
+  "version": "1.0.0",
+  "domains": [
+    {
+      "id": "business",
+      "label": "Business",
+      "description": "Decisions about product direction, policy, budget, organizational process, or customer commitments"
+    },
+    {
+      "id": "technical",
+      "label": "Technical",
+      "description": "Decisions about system structure, implementation, infrastructure, security architecture, or engineering practice"
+    },
+    {
+      "id": "hybrid",
+      "label": "Hybrid",
+      "description": "Decisions with material business and technical consequences requiring both lenses"
+    }
+  ],
+  "categories": [
+    {
+      "id": "architecture",
+      "label": "Architecture",
+      "domain_affinity": ["technical", "hybrid"],
+      "description": "Structure, patterns, component boundaries, integration style",
+      "adr_significant": true
+    },
+    {
+      "id": "infrastructure",
+      "label": "Infrastructure & DevOps",
+      "domain_affinity": ["technical"],
+      "description": "Cloud, deployment, CI/CD, runtime, observability platform choices"
+    },
+    {
+      "id": "security_compliance",
+      "label": "Security & Compliance",
+      "domain_affinity": ["technical", "hybrid"],
+      "description": "Auth, data protection, regulatory controls, audit requirements"
+    },
+    {
+      "id": "data_storage",
+      "label": "Data & Storage",
+      "domain_affinity": ["technical"],
+      "description": "Database selection, data model, retention, migration"
+    },
+    {
+      "id": "integration_api",
+      "label": "Integration & API",
+      "domain_affinity": ["technical"],
+      "description": "External interfaces, contracts, event schemas, partner integrations"
+    },
+    {
+      "id": "product_scope",
+      "label": "Product & Scope",
+      "domain_affinity": ["business", "hybrid"],
+      "description": "Feature scope, roadmap, prioritization, customer-facing commitments"
+    },
+    {
+      "id": "process_governance",
+      "label": "Process & Governance",
+      "domain_affinity": ["business", "hybrid"],
+      "description": "Approval workflows, team process, operating model, documentation standards"
+    },
+    {
+      "id": "financial_budget",
+      "label": "Financial & Budget",
+      "domain_affinity": ["business"],
+      "description": "Budget allocation, vendor spend, cost trade-offs"
+    },
+    {
+      "id": "organizational",
+      "label": "Organizational",
+      "domain_affinity": ["business"],
+      "description": "Staffing, ownership, RACI, team structure"
+    },
+    {
+      "id": "vendor_procurement",
+      "label": "Vendor & Procurement",
+      "domain_affinity": ["business", "hybrid"],
+      "description": "Tooling/vendor selection with contractual or operational impact"
+    }
+  ],
+  "signal_type_mapping": {
+    "explicit_decision": { "default_domain_hint": null },
+    "implied_choice": { "default_domain_hint": null },
+    "requirement_change": { "default_domain_hint": "product_scope" },
+    "architecture_choice": { "default_domain_hint": "architecture", "default_domain": "technical" },
+    "policy_change": { "default_domain_hint": "process_governance", "default_domain": "business" }
+  },
+  "analysis_profiles": [
+    {
+      "id": "full_analysis",
+      "label": "Full analysis",
+      "sub_engines": ["impact", "similarity", "forecast", "recommendation"],
+      "description": "Default for technical and hybrid decisions with architectural significance"
+    },
+    {
+      "id": "standard_analysis",
+      "label": "Standard analysis",
+      "sub_engines": ["impact", "similarity", "recommendation"],
+      "description": "Business decisions where forecast is lower value"
+    },
+    {
+      "id": "lightweight_analysis",
+      "label": "Lightweight analysis",
+      "sub_engines": ["similarity", "recommendation"],
+      "description": "Low-risk or operational decisions; skip deep impact/forecast"
+    },
+    {
+      "id": "review_first",
+      "label": "Review-first",
+      "sub_engines": [],
+      "description": "Low confidence; route directly to Review & Approval Portal with minimal automated analysis"
+    }
+  ]
+}

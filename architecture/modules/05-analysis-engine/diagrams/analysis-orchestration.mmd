@@ -1,0 +1,75 @@
+flowchart TB
+    subgraph input [Input]
+        queueIn["Queue / Event Bus<br/>decision.classified"]
+        knowledgeStore[(Knowledge Store)]
+        classStore[(classified_decisions)]
+        ledgerStore[(Decision Ledger<br/>read-only)]
+        graphStore[(Decision Knowledge Graph)]
+        vectorStore[(Vector DB)]
+    end
+
+    subgraph ae [Analysis Engine]
+        consumer[Job Consumer]
+        loader[Context Loader]
+        orchestrator[Analysis Orchestrator]
+        router[Profile Router]
+
+        subgraph phase1 [Phase 1 — Parallel]
+            impact[Impact Engine]
+            similarity[Similarity Engine]
+        end
+
+        subgraph phase2 [Phase 2]
+            forecast[Forecast Engine]
+        end
+
+        subgraph phase3 [Phase 3]
+            recommend[Recommendation Engine]
+        end
+
+        aggregator[Insight Aggregator]
+        quality[Quality Scorer]
+        writer[Insight Store Writer]
+        publisher[Event Publisher]
+        audit[Audit Logger]
+    end
+
+    subgraph output [Output]
+        insightStore[(insight_packages)]
+        queueOut["Queue / Event Bus<br/>insight.ready"]
+        review[Review & Approval Portal]
+    end
+
+    queueIn --> consumer
+    consumer --> loader
+    knowledgeStore --> loader
+    classStore --> loader
+    loader --> orchestrator
+    orchestrator --> router
+
+    router --> impact
+    router --> similarity
+    graphStore --> impact
+    vectorStore --> similarity
+    ledgerStore --> similarity
+
+    impact --> forecast
+    similarity --> forecast
+    loader --> forecast
+
+    impact --> recommend
+    similarity --> recommend
+    forecast --> recommend
+
+    impact --> aggregator
+    similarity --> aggregator
+    forecast --> aggregator
+    recommend --> aggregator
+
+    aggregator --> quality
+    quality --> writer
+    writer --> insightStore
+    writer --> publisher
+    publisher --> queueOut
+    queueOut --> review
+    orchestrator --> audit
