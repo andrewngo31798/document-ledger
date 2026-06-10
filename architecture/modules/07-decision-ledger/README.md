@@ -64,7 +64,7 @@ Consumer API
 
 | Direction | Type           | Description                          |
 | --------- | -------------- | ------------------------------------ |
-| **Input** | Approved decision | Output from Review Portal         |
+| **Input** | Approved decision | Output from Review & Approval Portal |
 | **Output**| Ledger record  | Durable, versioned source of truth   |
 
 > TBD: Storage schema, indexing strategy, and retention policy.

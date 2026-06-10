@@ -6,8 +6,8 @@ Documentation for the Document Ledger pipeline — from external signals to trus
 
 | Document | Description |
 | -------- | ----------- |
-| [System Architecture](overview/architecture.md) | End-to-end pipeline, core diagram, module table |
-| [Module Responsibility Matrix](overview/module-responsibility-matrix.md) | Input / processing / output per module |
+| [System Architecture](overview/architecture.md) | End-to-end pipeline, naming conventions, core diagram |
+| [Module Responsibility Matrix](overview/module-responsibility-matrix.md) | Input / processing / output per module and sub-component |
 
 ## Diagrams
 

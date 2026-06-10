@@ -21,6 +21,7 @@ Start with the [architecture index](architecture/README.md).
 Pipeline flow:
 
 ```
-External Sources → Signal Intake → Queue → Knowledge Processing → Classification
-  → Analysis → Review → Decision Ledger → Consumer API → AI Systems
+External Sources → Signal Intake Engine → Queue / Event Bus → Knowledge Processing Engine
+  → Classification Engine → Analysis Engine → Review & Approval Portal
+  → Decision Ledger → Consumer API → AI Systems
 ```

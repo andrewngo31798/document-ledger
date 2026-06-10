@@ -58,6 +58,6 @@ Review & Approval Portal
 | Direction | Type             | Description                              |
 | --------- | ---------------- | ---------------------------------------- |
 | **Output**| Insight package  | Combined analysis for human review       |
-| **Output**| `insight.ready` event | Trigger Review Portal              |
+| **Output**| `insight.ready` event | Trigger Review & Approval Portal   |
 
 > TBD: Sub-engine execution order, parallelization strategy, and vector store selection.

@@ -12,7 +12,7 @@ Main responsibilities:
 | Normalize text           | Clean and standardize unstructured input              |
 | Chunk content            | Split large documents into processable segments       |
 | Extract entities         | Identify people, systems, projects, dates               |
-| Detect decision candidates | NLP extraction, decision signal detection         |
+| Decision candidate detection | NLP extraction, decision signal detection       |
 | Persist knowledge        | Store raw + normalized knowledge for downstream use   |
 
 ---
@@ -20,7 +20,7 @@ Main responsibilities:
 # 2. Architecture
 
 ```
-Event Bus / Queue
+Queue / Event Bus
         ↓
 Knowledge Processing Engine
 ├── Source Fetcher

@@ -21,7 +21,7 @@ Main responsibilities:
 ```
 Signal Intake Engine
         ↓
-Event Bus / Queue
+Queue / Event Bus
 ├── Topic: source.triggered
 ├── Topic: source.ingested
 ├── Consumer: Knowledge Processing Engine
@@ -51,9 +51,9 @@ Knowledge Processing Engine
 | Event Type          | Producer              | Consumer                    |
 | ------------------- | --------------------- | --------------------------- |
 | **source.triggered**| Signal Intake Engine  | Knowledge Processing Engine |
-| **source.ingested** | Knowledge Processing  | Classification Engine       |
+| **source.ingested** | Knowledge Processing Engine | Classification Engine       |
 | **decision.classified** | Classification Engine | Analysis Engine         |
-| **insight.ready**   | Analysis Engine       | Review Portal               |
-| **decision.approved** | Review Portal       | Decision Ledger             |
+| **insight.ready**   | Analysis Engine       | Review & Approval Portal    |
+| **decision.approved** | Review & Approval Portal | Decision Ledger          |
 
 > TBD: Final event schema, broker choice (Kafka / SQS / RabbitMQ / BullMQ), and retry policy.

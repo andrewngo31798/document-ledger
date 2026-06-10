@@ -49,7 +49,7 @@ Analysis Engine
 
 | Direction | Type                 | Description                          |
 | --------- | -------------------- | ------------------------------------ |
-| **Input** | Structured knowledge | Output from Knowledge Processing     |
+| **Input** | Structured knowledge | Output from Knowledge Processing Engine |
 | **Output**| Classified decision  | Category, tags, confidence score     |
 | **Output**| `decision.classified` event | Trigger Analysis Engine        |
 
