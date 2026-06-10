@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "document-ledger/events/source.ingested",
+  "title": "source.ingested",
+  "description": "Event published by Knowledge Processing Engine when structured knowledge is ready for classification.",
+  "type": "object",
+  "required": [
+    "event_type",
+    "event_id",
+    "occurred_at",
+    "tenant_id",
+    "job_id",
+    "trace_id",
+    "payload"
+  ],
+  "properties": {
+    "event_type": { "const": "source.ingested" },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string" },
+    "job_id": { "type": "string", "format": "uuid" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["knowledge_id", "source_type", "source_reference", "summary", "processing"],
+      "properties": {
+        "knowledge_id": { "type": "string", "format": "uuid" },
+        "source_type": {
+          "type": "string",
+          "enum": ["jira", "confluence", "slack", "github", "meeting", "file"]
+        },
+        "source_reference": {
+          "type": "object",
+          "required": ["external_id"],
+          "properties": {
+            "external_id": { "type": "string" },
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "summary": {
+          "type": "object",
+          "required": ["chunk_count", "entity_count", "decision_candidate_count"],
+          "properties": {
+            "title": { "type": "string" },
+            "chunk_count": { "type": "integer", "minimum": 0 },
+            "entity_count": { "type": "integer", "minimum": 0 },
+            "decision_candidate_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "processing": {
+          "type": "object",
+          "required": ["content_hash", "duration_ms", "stages_completed"],
+          "properties": {
+            "content_hash": { "type": "string" },
+            "duration_ms": { "type": "integer", "minimum": 0 },
+            "stages_completed": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["fetch", "normalize", "chunk", "extract", "detect", "persist"]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+flowchart TB
+    subgraph input [Input]
+        queueIn["Queue / Event Bus<br/>source.triggered"]
+    end
+
+    subgraph kpe [Knowledge Processing Engine]
+        consumer[Job Consumer]
+        orchestrator[Pipeline Orchestrator]
+        registry[Source Adapter Registry]
+        fetcher[Source Fetcher]
+        normalizer[Text Normalizer]
+        chunker[Content Chunker]
+        entities[Entity Extractor]
+        detector[Decision Candidate Detector]
+        enricher[Metadata Enricher]
+        writer[Knowledge Store Writer]
+        publisher[Event Publisher]
+        audit[Audit Logger]
+    end
+
+    subgraph storage [Storage]
+        postgres[(PostgreSQL)]
+        objectStore[(Object Storage)]
+    end
+
+    subgraph output [Output]
+        queueOut["Queue / Event Bus<br/>source.ingested"]
+        classification[Classification Engine]
+    end
+
+    queueIn --> consumer
+    consumer --> orchestrator
+    orchestrator --> registry
+    registry --> fetcher
+    fetcher --> normalizer
+    normalizer --> chunker
+    chunker --> entities
+    entities --> detector
+    detector --> enricher
+    enricher --> writer
+    writer --> postgres
+    writer --> objectStore
+    writer --> publisher
+    publisher --> queueOut
+    queueOut --> classification
+    orchestrator --> audit
+    fetcher --> audit
+    writer --> audit

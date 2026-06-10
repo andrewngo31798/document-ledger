@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "document-ledger/events/source.triggered",
+  "title": "source.triggered",
+  "description": "Event consumed by Knowledge Processing Engine when Signal Intake creates a processing job.",
+  "type": "object",
+  "required": [
+    "event_type",
+    "event_id",
+    "occurred_at",
+    "tenant_id",
+    "job_id",
+    "trace_id",
+    "payload"
+  ],
+  "properties": {
+    "event_type": { "const": "source.triggered" },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string" },
+    "job_id": { "type": "string", "format": "uuid" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["trigger_type", "source_type", "source_reference"],
+      "properties": {
+        "trigger_type": {
+          "type": "string",
+          "enum": ["webhook", "manual", "schedule", "backfill", "replay"]
+        },
+        "source_type": {
+          "type": "string",
+          "enum": ["jira", "confluence", "slack", "github", "meeting", "file"]
+        },
+        "source_reference": {
+          "type": "object",
+          "required": ["external_id"],
+          "properties": {
+            "external_id": { "type": "string" },
+            "url": { "type": "string", "format": "uri" },
+            "version": { "type": "string" }
+          }
+        },
+        "scope": {
+          "type": "object",
+          "properties": {
+            "project_id": { "type": "string" },
+            "space_key": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
