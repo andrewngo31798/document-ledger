@@ -1,27 +1,69 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 :root {
-  --color-canvas: #0f1117;
-  --color-node-bg: #161b27;
-  --color-node-border: #1e293b;
-  --color-sub-bg: #1e293b;
-  --color-panel: #1e293b;
-  --color-text-primary: #f1f5f9;
-  --color-text-muted: #94a3b8;
-  --color-text-data: #e2e8f0;
+  /* Anthropic brand — light (default) */
+  --color-background-primary: #faf9f5;
+  --color-background-secondary: #e8e6dc;
+  --color-background-canvas: #f2f0e9;
+  --color-border-secondary: #dcd9cc;
+  --color-border-tertiary: #e3e0d5;
+  --color-text-primary: #141413;
+  --color-text-secondary: #6b6a63;
+  --color-text-tertiary: #b0aea5;
 
-  --color-idle: #374151;
-  --color-processing: #3b82f6;
-  --color-complete: #22c55e;
-  --color-error: #ef4444;
-  --color-rejected: #6b7280;
-  --color-mockup: #f59e0b;
+  /* Accents (constant across themes) */
+  --accent-intake: #6a9bcc;
+  --accent-processing: #d97757;
+  --accent-output: #788c5d;
+  --accent-rejected: #bf5a47;
 
-  font-family: 'Inter', system-ui, sans-serif;
+  /* Translucent accent tints for badges / soft fills (work over light or dark) */
+  --accent-processing-soft: rgba(217, 119, 87, 0.16);
+  --accent-output-soft: rgba(120, 140, 93, 0.16);
+  --accent-rejected-soft: rgba(191, 90, 71, 0.16);
+  --accent-processing-border: rgba(217, 119, 87, 0.27);
+  --accent-processing-border-strong: rgba(217, 119, 87, 0.4);
+
+  /* Lane header tints (accent @ ~14% over the surface) */
+  --lane-intake-bg: rgba(106, 155, 204, 0.14);
+  --lane-processing-bg: rgba(217, 119, 87, 0.14);
+  --lane-output-bg: rgba(120, 140, 93, 0.14);
+
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Back-compat aliases used elsewhere (DetailPanel etc.) */
+  --color-canvas: var(--color-background-canvas);
+  --color-node-bg: var(--color-background-primary);
+  --color-node-border: var(--color-border-secondary);
+  --color-sub-bg: var(--color-background-secondary);
+  --color-panel: var(--color-background-primary);
+  --color-text-muted: var(--color-text-secondary);
+  --color-text-data: var(--color-text-primary);
+  --color-idle: var(--color-text-tertiary);
+  --color-processing: var(--accent-processing);
+  --color-complete: var(--accent-output);
+  --color-error: var(--accent-rejected);
+  --color-rejected: var(--accent-rejected);
+
+  font-family: 'Poppins', system-ui, sans-serif;
   font-size: 14px;
   color: var(--color-text-primary);
-  background-color: var(--color-canvas);
+  background-color: var(--color-background-canvas);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background-primary: #141413;
+    --color-background-secondary: #1f1e1c;
+    --color-background-canvas: #100f0e;
+    --color-border-secondary: #33312d;
+    --color-border-tertiary: #2a2825;
+    --color-text-primary: #faf9f5;
+    --color-text-secondary: #b0aea5;
+    --color-text-tertiary: #86847c;
+  }
 }
 
 * {
@@ -31,7 +73,7 @@
 }
 
 body {
-  background-color: var(--color-canvas);
+  background-color: var(--color-background-canvas);
   min-height: 100vh;
 }
 
@@ -42,23 +84,31 @@ body {
   flex-direction: column;
 }
 
+/* Prose blocks use the Lora serif per brand guidelines */
+.prose {
+  font-family: 'Lora', Georgia, serif;
+}
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
 /* ReactFlow overrides */
 .react-flow__background {
-  background-color: var(--color-canvas) !important;
+  background-color: var(--color-background-canvas) !important;
 }
 
 .react-flow__edge-path {
-  stroke: var(--color-idle);
-  stroke-width: 1.5;
+  stroke: var(--color-border-secondary);
+  stroke-width: 1;
 }
 
 .react-flow__controls-button {
-  background: #161b27 !important;
-  border-color: #1e293b !important;
-  fill: #94a3b8 !important;
+  background: var(--color-background-primary) !important;
+  border-color: var(--color-border-secondary) !important;
+  fill: var(--color-text-secondary) !important;
 }
 .react-flow__controls-button:hover {
-  background: #1e293b !important;
+  background: var(--color-background-secondary) !important;
 }
 
 @keyframes dash {
@@ -66,8 +116,8 @@ body {
 }
 
 @keyframes pulse-ring {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
-  50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 87, 0.5); }
+  50% { box-shadow: 0 0 0 7px rgba(217, 119, 87, 0); }
 }
 
 .pulse-ring {
@@ -88,10 +138,10 @@ body {
 }
 
 .spin {
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.7s linear infinite;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--color-border-secondary); border-radius: 3px; }

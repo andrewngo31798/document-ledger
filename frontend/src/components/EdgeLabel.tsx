@@ -1,64 +1,54 @@
-import { EdgeLabelRenderer, BaseEdge, getStraightPath, type EdgeProps } from '@xyflow/react'
+import { EdgeLabelRenderer, BaseEdge, getSmoothStepPath, type EdgeProps } from '@xyflow/react'
 
 export interface LabeledEdgeData {
   eventName?: string
-  description?: string
-  status?: 'idle' | 'active' | 'complete'
+  /** active once the source node has completed */
+  active?: boolean
 }
 
 export function LabeledEdge({
-  id, sourceX, sourceY, targetX, targetY, data,
+  id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd,
 }: EdgeProps & { data?: LabeledEdgeData }) {
-  const [edgePath, labelX, labelY] = getStraightPath({ sourceX, sourceY, targetX, targetY })
-  const status = data?.status ?? 'idle'
-
-  const strokeColor =
-    status === 'complete' ? '#22c55e' :
-    status === 'active' ? '#3b82f6' :
-    '#374151'
-
-  const strokeDasharray = status === 'active' ? '6' : status === 'idle' ? '4 3' : 'none'
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 8,
+  })
+  const active = data?.active ?? false
+  const stroke = active ? 'var(--accent-processing)' : 'var(--color-border-secondary)'
 
   return (
     <>
       <BaseEdge
         id={id}
         path={edgePath}
-        style={{
-          stroke: strokeColor,
-          strokeWidth: 1.5,
-          strokeDasharray: strokeDasharray !== 'none' ? strokeDasharray : undefined,
-          animation: status === 'active' ? 'dash 0.6s linear infinite' : undefined,
-        }}
+        markerEnd={markerEnd}
+        style={{ stroke, strokeWidth: 1, transition: 'stroke 0.3s' }}
       />
-      {(data?.eventName || data?.description) && (
+
+      {/* Animated SVG Edge — a pulse travels source→target while active */}
+      {active && (
+        <circle r={3} fill="var(--accent-processing)">
+          <animateMotion dur="3s" repeatCount="indefinite" path={edgePath} />
+        </circle>
+      )}
+
+      {data?.eventName && (
         <EdgeLabelRenderer>
           <div
+            className="font-mono"
             style={{
               position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY + 11}px)`,
               pointerEvents: 'none',
-              textAlign: 'center',
-              opacity: status === 'idle' ? 0.4 : 1,
+              fontSize: 8.5,
+              color: 'var(--color-text-tertiary)',
+              background: 'var(--color-background-canvas)',
+              padding: '0 4px',
+              whiteSpace: 'nowrap',
+              opacity: active ? 1 : 0.75,
               transition: 'opacity 0.3s',
             }}
           >
-            {data.eventName && (
-              <div className="font-mono" style={{
-                fontSize: 9, color: '#60a5fa',
-                background: '#0f1117cc',
-                padding: '1px 5px', borderRadius: 3,
-                marginBottom: 2,
-                display: 'inline-block',
-              }}>
-                {data.eventName}
-              </div>
-            )}
-            {data.description && (
-              <div style={{ fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                {data.description}
-              </div>
-            )}
+            {data.eventName}
           </div>
         </EdgeLabelRenderer>
       )}

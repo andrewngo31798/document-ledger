@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Handle, Position } from '@xyflow/react'
-import { StatusRing } from '../components/StatusRing'
+import { IconUserCheck, IconUser, IconCheck, IconX } from '@tabler/icons-react'
 import { usePipelineStore } from '../store/pipeline.store'
 import { usePipelineRunner } from '../hooks/usePipelineRunner'
 import type { NodeStatus, InsightPackage } from '../types/pipeline'
+import { Spinner, Pill, handleStyle } from './shared'
 
-export function ReviewPortalNode({ data }: { data: { status: NodeStatus; isMockup?: boolean } }) {
-  const { status, isMockup } = data
+export function ReviewPortalNode({ data }: { data: { status: NodeStatus } }) {
+  const { status } = data
   const [rationale, setRationale] = useState('')
   const stageOutputs = usePipelineStore((s) => s.stageOutputs)
   const reviewDecision = usePipelineStore((s) => s.reviewDecision)
@@ -16,116 +17,93 @@ export function ReviewPortalNode({ data }: { data: { status: NodeStatus; isMocku
   const isActive = status === 'idle' && reviewDecision === 'pending' && !!insight
   const isComplete = status === 'complete' || status === 'rejected'
 
-  if (!isActive && !isComplete) {
-    return (
-      <div style={{
-        background: 'var(--color-node-bg)',
-        border: '1px solid #1e293b',
-        borderRadius: 10,
-        padding: '10px 14px',
-        minWidth: 220,
-        display: 'flex', alignItems: 'center', gap: 10,
-      }}>
-        <Handle type="target" position={Position.Top} style={{ background: '#374151', border: 'none', width: 6, height: 6 }} />
-        <StatusRing status={status} size={10} />
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>Review Portal</span>
-            {isMockup && <span className="font-mono" style={{ fontSize: 9, fontWeight: 700, background: '#f59e0b', color: '#1c1917', padding: '1px 5px', borderRadius: 3 }}>MOCKUP</span>}
-          </div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Human approval required</div>
-        </div>
-        <Handle type="source" position={Position.Bottom} style={{ background: '#374151', border: 'none', width: 6, height: 6 }} />
-      </div>
-    )
-  }
+  const accent = status === 'rejected' ? 'var(--accent-rejected)' : 'var(--accent-output)'
 
   return (
     <div style={{
-      background: 'var(--color-sub-bg)',
-      border: `1px solid ${status === 'complete' ? '#22c55e55' : status === 'rejected' ? '#ef444455' : '#3b82f655'}`,
-      borderRadius: 12,
-      padding: '14px',
-      minWidth: 320,
-      maxWidth: 380,
+      position: 'relative',
+      background: 'var(--color-background-primary)',
+      border: '0.5px dashed var(--color-border-secondary)',
+      borderLeft: `2.5px solid ${accent}`,
+      borderRadius: 'var(--radius-md)',
+      padding: '9px 12px',
+      minWidth: isActive ? 300 : 184,
+      maxWidth: 340,
+      transition: 'border-color 0.3s',
+      boxShadow: '0 1px 3px rgba(20,20,19,0.06)',
     }}>
-      <Handle type="target" position={Position.Top} style={{ background: '#374151', border: 'none', width: 6, height: 6 }} />
+      <Handle id="l" type="target" position={Position.Left} style={handleStyle} />
+      <Handle id="t" type="target" position={Position.Top} style={handleStyle} />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <StatusRing status={status === 'idle' ? 'processing' : status} size={10} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>Review Portal</span>
-        <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>Trust boundary</span>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <IconUserCheck size={14} stroke={1.7} color={accent} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)' }}>Review Portal</div>
+          <div style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>Trust boundary</div>
+        </div>
       </div>
 
-      {insight && (
-        <div style={{ marginBottom: 12, fontSize: 12, color: '#e2e8f0', lineHeight: 1.5 }}>
-          {insight.decision_summary}
-        </div>
-      )}
+      {/* Badges row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
+        <Pill color="var(--accent-output)" soft="var(--accent-output-soft)"><IconUser size={11} stroke={2} /> human step</Pill>
+        {status === 'processing' && (
+          <Pill color="var(--accent-processing)"><Spinner /> Processing</Pill>
+        )}
+        {isComplete && reviewDecision === 'approved' && (
+          <Pill color="var(--accent-output)"><IconCheck size={11} stroke={2.5} /> Approved</Pill>
+        )}
+        {isComplete && reviewDecision === 'rejected' && (
+          <Pill color="var(--accent-rejected)"><IconX size={11} stroke={2.5} /> Rejected</Pill>
+        )}
+      </div>
 
-      {insight && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-          <Chip label={`Domain: ${insight.domain}`} color="#60a5fa" />
-          <Chip label={`Blast radius: ${Math.round(insight.impact_map.blast_radius_score * 100)}%`} color="#f59e0b" />
-          <Chip label={`Forecast: ${insight.forecast_report.confidence_band} confidence`} color="#a78bfa" />
-        </div>
-      )}
-
+      {/* Interactive decision UI */}
       {isActive && (
-        <>
+        <div className="fade-in" style={{ marginTop: 10 }}>
+          {insight && (
+            <div className="prose" style={{ fontSize: 11, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 8 }}>
+              {insight.decision_summary}
+            </div>
+          )}
           <textarea
             value={rationale}
             onChange={(e) => setRationale(e.target.value)}
             placeholder="Add reviewer rationale (optional)…"
             rows={2}
+            className="nodrag"
             style={{
-              width: '100%', background: '#0f1117', border: '1px solid #1e293b',
-              borderRadius: 6, padding: '8px 10px', fontSize: 11,
-              color: '#e2e8f0', fontFamily: 'Inter, system-ui', resize: 'none', outline: 'none',
-              marginBottom: 10,
+              width: '100%', background: 'var(--color-background-secondary)',
+              border: '0.5px solid var(--color-border-secondary)',
+              borderRadius: 'var(--radius-md)', padding: '7px 9px', fontSize: 11,
+              color: 'var(--color-text-primary)', fontFamily: 'Poppins, system-ui',
+              resize: 'none', outline: 'none', marginBottom: 8,
             }}
           />
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => handleApprove(rationale || 'Approved via demo portal')}
               style={{
-                flex: 1, background: '#22c55e', color: '#fff', border: 'none',
-                borderRadius: 7, padding: '8px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                flex: 1, background: 'var(--accent-output)', color: '#faf9f5', border: 'none',
+                borderRadius: 'var(--radius-md)', padding: '7px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}>
               Approve ✓
             </button>
             <button
               onClick={() => handleReject(rationale || 'Rejected via demo portal')}
               style={{
-                flex: 1, background: 'transparent', color: '#ef4444',
-                border: '1px solid #ef444466',
-                borderRadius: 7, padding: '8px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                flex: 1, background: 'transparent', color: 'var(--accent-rejected)',
+                border: '1px solid var(--accent-rejected)',
+                borderRadius: 'var(--radius-md)', padding: '7px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}>
               Reject ✗
             </button>
           </div>
-        </>
-      )}
-
-      {isComplete && (
-        <div className="fade-in" style={{ fontSize: 12, marginTop: 4 }}>
-          {reviewDecision === 'approved'
-            ? <span style={{ color: '#22c55e' }}>✓ Approved — writing to ledger</span>
-            : <span style={{ color: '#ef4444' }}>✗ Rejected — pipeline halted</span>
-          }
         </div>
       )}
 
-      <Handle type="source" position={Position.Bottom} style={{ background: '#374151', border: 'none', width: 6, height: 6 }} />
+      <Handle id="r" type="source" position={Position.Right} style={handleStyle} />
+      <Handle id="b" type="source" position={Position.Bottom} style={handleStyle} />
     </div>
-  )
-}
-
-function Chip({ label, color }: { label: string; color: string }) {
-  return (
-    <span className="font-mono" style={{
-      fontSize: 10, padding: '2px 6px', borderRadius: 4,
-      background: `${color}18`, color,
-    }}>{label}</span>
   )
 }

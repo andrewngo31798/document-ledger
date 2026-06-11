@@ -3,275 +3,237 @@ import {
   ReactFlow,
   Background,
   Controls,
+  ReactFlowProvider,
   useReactFlow,
-  useNodesState,
+  MarkerType,
   type Node,
   type Edge,
   type NodeMouseHandler,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+import {
+  IconAntenna, IconTopologyStar, IconBrain, IconTags, IconDatabase, IconApi, type Icon,
+} from '@tabler/icons-react'
 
 import { usePipelineStore } from '../store/pipeline.store'
 import { usePipelineRunner } from '../hooks/usePipelineRunner'
-import { PipelineNode } from '../nodes/PipelineNode'
-import { InputNode } from '../nodes/InputNode'
+import { StandardNode, type Lane } from '../nodes/StandardNode'
 import { AnalysisEngineNode } from '../nodes/AnalysisEngineNode'
 import { ReviewPortalNode } from '../nodes/ReviewPortalNode'
-import { ConsumerApiNode } from '../nodes/ConsumerApiNode'
+import { LaneNode } from '../nodes/LaneNode'
 import { LabeledEdge } from './EdgeLabel'
 import { DetailPanel } from './DetailPanel'
-import type { NodeRow } from './SyntaxRow'
 import type { PipelineStage } from '../types/pipeline'
 
 const nodeTypes = {
-  inputNode: InputNode,
-  pipelineNode: PipelineNode,
+  standard: StandardNode,
   analysisEngine: AnalysisEngineNode,
   reviewPortal: ReviewPortalNode,
-  consumerApi: ConsumerApiNode,
+  lane: LaneNode,
+}
+const edgeTypes = { labeled: LabeledEdge }
+
+const STAGE_LABEL: Record<PipelineStage, string> = {
+  input: 'Input',
+  'signal-intake': 'Signal Intake',
+  'event-bus': 'Event Bus',
+  'knowledge-processing': 'Knowledge Processing',
+  classification: 'Classification',
+  'analysis-engine': 'Analysis Engine',
+  'review-portal': 'Review Portal',
+  'decision-ledger': 'Decision Ledger',
+  'consumer-api': 'Consumer API',
 }
 
-const edgeTypes = {
-  labeled: LabeledEdge,
-}
-
-const X = 0
-const GAP = 56 // vertical space between stacked nodes
-const FALLBACK_H = 90 // height assumed for a node before it has been measured
-
-// Pipeline order used for vertical stacking.
-const NODE_ORDER: PipelineStage[] = [
-  'input', 'signal-intake', 'event-bus', 'knowledge-processing',
-  'classification', 'analysis-engine', 'review-portal', 'decision-ledger', 'consumer-api',
+const RUN_STAGES: PipelineStage[] = [
+  'signal-intake', 'event-bus', 'knowledge-processing', 'classification',
+  'analysis-engine', 'review-portal', 'decision-ledger', 'consumer-api',
 ]
 
-function edgeStatus(sourceStage: PipelineStage, nodeStatus: Record<PipelineStage, string>): 'idle' | 'active' | 'complete' {
-  const s = nodeStatus[sourceStage]
-  if (s === 'complete') return 'complete'
-  if (s === 'processing') return 'active'
-  return 'idle'
-}
+// Static node definitions (positions + lane + icon). Snake layout for clean cross-lane drops.
+interface StdDef { id: PipelineStage; label: string; subtitle: string; lane: Lane; icon: Icon; x: number; y: number }
+const STD_NODES: StdDef[] = [
+  { id: 'signal-intake', label: 'Signal Intake', subtitle: 'Validates trigger', lane: 'intake', icon: IconAntenna, x: 40, y: 30 },
+  { id: 'event-bus', label: 'Event Bus', subtitle: 'Async routing', lane: 'intake', icon: IconTopologyStar, x: 380, y: 30 },
+  { id: 'knowledge-processing', label: 'Knowledge Processing', subtitle: 'Extract & detect', lane: 'processing', icon: IconBrain, x: 380, y: 243 },
+  { id: 'classification', label: 'Classification', subtitle: 'Domain & confidence', lane: 'processing', icon: IconTags, x: 720, y: 243 },
+  { id: 'decision-ledger', label: 'Decision Ledger', subtitle: 'Versioned record', lane: 'output', icon: IconDatabase, x: 1420, y: 500 },
+  { id: 'consumer-api', label: 'Consumer API', subtitle: 'RAG & agents', lane: 'output', icon: IconApi, x: 1720, y: 500 },
+]
+const ANALYSIS_POS = { x: 1040, y: 185 }
+const REVIEW_POS = { x: 1420, y: 185 }
 
-function badgeFor(out: unknown): string | undefined {
-  if (!out || typeof out !== 'object') return undefined
-  const o = out as Record<string, unknown>
-  const val = o['insight_package_id']
-  return val ? String(val) : 'done'
-}
+const LANE_W = 1960
+const LANES = [
+  { id: 'lane-intake', title: 'Intake layer', bg: 'var(--lane-intake-bg)', text: 'var(--accent-intake)', y: 0, h: 120 },
+  { id: 'lane-processing', title: 'Processing layer', bg: 'var(--lane-processing-bg)', text: 'var(--accent-processing)', y: 130, h: 330 },
+  { id: 'lane-output', title: 'Output layer', bg: 'var(--lane-output-bg)', text: 'var(--accent-output)', y: 470, h: 120 },
+]
 
-// Map a stage's structured output into schema-style display rows.
-function buildRows(stage: PipelineStage, out: unknown): NodeRow[] | undefined {
-  if (!out || typeof out !== 'object') return undefined
-  const o = out as Record<string, unknown>
-  const str = (k: string) => (o[k] != null ? String(o[k]) : '')
+// Lane backgrounds never change — build them once instead of on every status update.
+const LANE_NODES: Node[] = LANES.map((l) => ({
+  id: l.id, type: 'lane',
+  position: { x: 0, y: l.y },
+  data: { title: l.title, headerBg: l.bg, headerText: l.text, width: LANE_W, height: l.h },
+  draggable: false, selectable: false, zIndex: 0,
+}))
 
-  switch (stage) {
-    case 'signal-intake':
-      return [
-        { field: 'job_id', value: str('job_id'), accent: 'string' },
-        { field: 'source_type', value: str('source_type'), accent: 'type' },
-        { field: 'triggered_by', value: str('triggered_by'), accent: 'attr' },
-      ]
-    case 'event-bus':
-      return [
-        { field: 'event', value: str('message'), accent: 'attr' },
-        { field: 'routing', value: str('routing'), accent: 'string' },
-      ]
-    case 'knowledge-processing':
-      return [
-        { field: 'knowledge_id', value: str('knowledge_id'), accent: 'string' },
-        { field: 'candidates', value: str('decision_candidates'), accent: 'num' },
-        { field: 'signal', value: str('decision_signal'), accent: 'attr' },
-      ]
-    case 'classification':
-      return [
-        { field: 'domain', value: str('domain'), accent: 'type' },
-        { field: 'confidence', value: str('confidence'), accent: 'num' },
-        { field: 'profile', value: str('analysis_profile'), accent: 'attr' },
-      ]
-    case 'decision-ledger':
-      return [
-        { field: 'ledger_id', value: str('ledger_id'), accent: 'string' },
-        { field: 'version', value: str('version'), accent: 'num' },
-        { field: 'approved_by', value: str('approved_by'), accent: 'attr' },
-      ]
-    case 'consumer-api':
-      return [
-        { field: 'source', value: str('source_ledger_id'), accent: 'string' },
-        { field: 'response', value: 'grounded ✓', accent: 'attr' },
-      ]
-    default:
-      return undefined
-  }
-}
+interface EdgeDef { source: PipelineStage; target: PipelineStage; sh: string; th: string; label?: string }
+const EDGE_DEFS: EdgeDef[] = [
+  { source: 'signal-intake', target: 'event-bus', sh: 'r', th: 'l', label: 'source.triggered' },
+  { source: 'event-bus', target: 'knowledge-processing', sh: 'b', th: 't' },
+  { source: 'knowledge-processing', target: 'classification', sh: 'r', th: 'l', label: 'source.ingested' },
+  { source: 'classification', target: 'analysis-engine', sh: 'r', th: 'l', label: 'decision.classified' },
+  { source: 'analysis-engine', target: 'review-portal', sh: 'r', th: 'l', label: 'insight.ready' },
+  { source: 'review-portal', target: 'decision-ledger', sh: 'b', th: 't', label: 'decision.approved' },
+  { source: 'decision-ledger', target: 'consumer-api', sh: 'r', th: 'l' },
+]
 
-// Inner component that can use useReactFlow (must be inside ReactFlowProvider)
 function PipelineFlowInner() {
-  const store = usePipelineStore()
+  const runConfig = usePipelineStore((s) => s.runConfig)
+  const nodeStatus = usePipelineStore((s) => s.nodeStatus)
+  const activeStage = usePipelineStore((s) => s.activeStage)
+  const reviewDecision = usePipelineStore((s) => s.reviewDecision)
+  const startRun = usePipelineStore((s) => s.startRun)
+  const stageOutputs = usePipelineStore((s) => s.stageOutputs)
+
   const { advanceStage } = usePipelineRunner()
-  const [selectedStage, setSelectedStage] = useState<PipelineStage | null>(null)
   const { fitView } = useReactFlow()
+  const [selectedStage, setSelectedStage] = useState<PipelineStage | null>(null)
+  const [isRunning, setIsRunning] = useState(false)
 
-  const { runConfig, nodeStatus, activeStage, analysisExpanded, reviewDecision } = store
-  const isConfluence = runConfig?.inputType === 'confluence'
-  const wrapperRef = useRef<HTMLDivElement>(null)
+  // Keep a stable ref to advanceStage so the auto-run effect doesn't reset on every render.
+  const advanceRef = useRef(advanceStage)
+  advanceRef.current = advanceStage
 
-  // Content-only node definitions (type + data), no positions. Positions are derived
-  // separately from measured DOM heights so variable-height nodes never overlap.
-  const nodeDefs = useMemo(() => {
-    const ns = nodeStatus
-    const rowsFor = (s: PipelineStage): NodeRow[] | undefined =>
-      buildRows(s, store.stageOutputs[s as keyof typeof store.stageOutputs])
+  const activeStatus = activeStage ? nodeStatus[activeStage] : null
+  const completedCount = RUN_STAGES.filter((s) => nodeStatus[s] === 'complete').length
+  const isComplete = nodeStatus['consumer-api'] === 'complete'
+  const isHalted = reviewDecision === 'rejected'
 
-    return {
-      'input': { type: 'inputNode', data: { config: runConfig } },
-      'signal-intake': { type: 'pipelineNode', data: { label: 'Signal Intake', subtitle: 'Validates trigger · records attribution', status: ns['signal-intake'], rows: rowsFor('signal-intake'), isMockup: isConfluence } },
-      'event-bus': { type: 'pipelineNode', data: { label: 'Event Bus', subtitle: 'Async routing · retry · isolation', status: ns['event-bus'], rows: rowsFor('event-bus'), isMockup: isConfluence } },
-      'knowledge-processing': { type: 'pipelineNode', data: { label: 'Knowledge Processing', subtitle: 'Extracts entities · detects decisions', status: ns['knowledge-processing'], rows: rowsFor('knowledge-processing'), isMockup: isConfluence } },
-      'classification': { type: 'pipelineNode', data: { label: 'Classification', subtitle: 'Domain · confidence · routing profile', status: ns['classification'], rows: rowsFor('classification'), isMockup: isConfluence } },
-      'analysis-engine': { type: 'analysisEngine', data: { status: ns['analysis-engine'], outputBadge: badgeFor(store.stageOutputs['analysis-engine']), isMockup: isConfluence } },
-      'review-portal': { type: 'reviewPortal', data: { status: ns['review-portal'], isMockup: isConfluence } },
-      'decision-ledger': { type: 'pipelineNode', data: { label: 'Decision Ledger', subtitle: 'Versioned · evidence-linked · immutable', status: ns['decision-ledger'], rows: rowsFor('decision-ledger'), isMockup: isConfluence } },
-      'consumer-api': { type: 'consumerApi', data: { status: ns['consumer-api'], isMockup: isConfluence } },
-    } as Record<PipelineStage, { type: string; data: Record<string, unknown> }>
-  }, [nodeStatus, runConfig, store.stageOutputs, isConfluence])
-
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
-
-  // Sync content into the rendered nodes, preserving each node's current position.
+  // Auto-run driver (view-layer only): walk stages while running, pausing at the human step.
   useEffect(() => {
-    setNodes((prev) =>
-      NODE_ORDER.map((id, i) => {
-        const def = nodeDefs[id]
-        const existing = prev.find((n) => n.id === id)
-        return {
-          id,
-          type: def.type,
-          draggable: false,
-          data: def.data,
-          position: existing?.position ?? { x: X, y: i * (FALLBACK_H + GAP) },
-        } as Node
-      }),
-    )
-  }, [nodeDefs, setNodes])
+    if (!isRunning) return
+    if (!activeStage) return
+    if (activeStage === 'review-portal') return // human pause — resumes after Approve
+    if (activeStatus !== 'idle') return
+    const t = setTimeout(() => advanceRef.current(), 650)
+    return () => clearTimeout(t)
+  }, [isRunning, activeStage, activeStatus])
 
-  // After the DOM paints, measure each node's real height and re-stack with no overlap.
-  // Re-runs whenever content OR an expansion state that changes height changes.
+  function runDemo() {
+    setIsRunning(true)
+  }
+  function reset() {
+    setIsRunning(false)
+    if (runConfig) startRun(runConfig)
+  }
+
   useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      const container = wrapperRef.current
-      if (!container) return
-      let y = 0
-      const yById: Record<string, number> = {}
-      for (const id of NODE_ORDER) {
-        yById[id] = y
-        const el = container.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`)
-        y += (el?.offsetHeight ?? FALLBACK_H) + GAP
-      }
-      setNodes((prev) => {
-        let changed = false
-        const next = prev.map((n) => {
-          if (Math.abs(n.position.y - yById[n.id]) > 0.5) {
-            changed = true
-            return { ...n, position: { x: X, y: yById[n.id] } }
-          }
-          return n
-        })
-        return changed ? next : prev
-      })
-      fitView({ padding: 0.2, duration: 400 })
-    })
-    return () => cancelAnimationFrame(raf)
-  }, [nodeDefs, analysisExpanded, reviewDecision, activeStage, setNodes, fitView])
+    const t = setTimeout(() => fitView({ padding: 0.18, duration: 400 }), 60)
+    return () => clearTimeout(t)
+  }, [fitView])
 
-  const isNextDisabled =
-    !activeStage ||
-    activeStage === 'review-portal' ||
-    nodeStatus[activeStage] === 'processing' ||
-    analysisExpanded
-
-  const edges: Edge[] = useMemo(() => {
-    const es = (from: PipelineStage) => edgeStatus(from, nodeStatus as Record<PipelineStage, string>)
-    return [
-      { id: 'e-input-si', source: 'input', target: 'signal-intake', type: 'labeled', data: { eventName: 'source.triggered', description: 'trigger payload', status: es('input') } },
-      { id: 'e-si-eb', source: 'signal-intake', target: 'event-bus', type: 'labeled', data: { eventName: 'source.triggered', description: 'processing job', status: es('signal-intake') } },
-      { id: 'e-eb-kp', source: 'event-bus', target: 'knowledge-processing', type: 'labeled', data: { description: 'job message routed', status: es('event-bus') } },
-      { id: 'e-kp-cls', source: 'knowledge-processing', target: 'classification', type: 'labeled', data: { eventName: 'source.ingested', description: 'structured knowledge + candidates', status: es('knowledge-processing') } },
-      { id: 'e-cls-ae', source: 'classification', target: 'analysis-engine', type: 'labeled', data: { eventName: 'decision.classified', description: 'domain · confidence · profile', status: es('classification') } },
-      { id: 'e-ae-rp', source: 'analysis-engine', target: 'review-portal', type: 'labeled', data: { eventName: 'insight.ready', description: 'insight package', status: es('analysis-engine') } },
-      { id: 'e-rp-dl', source: 'review-portal', target: 'decision-ledger', type: 'labeled', data: { eventName: 'decision.approved', description: 'approved decision + rationale', status: es('review-portal') } },
-      { id: 'e-dl-ca', source: 'decision-ledger', target: 'consumer-api', type: 'labeled', data: { description: 'versioned ledger record', status: es('decision-ledger') } },
-    ]
+  const nodes: Node[] = useMemo(() => {
+    const stdNodes: Node[] = STD_NODES.map((n) => ({
+      id: n.id, type: 'standard',
+      position: { x: n.x, y: n.y },
+      data: { stage: n.id, label: n.label, subtitle: n.subtitle, status: nodeStatus[n.id], lane: n.lane, icon: n.icon },
+      draggable: false, zIndex: 1,
+    }))
+    const analysis: Node = {
+      id: 'analysis-engine', type: 'analysisEngine', position: ANALYSIS_POS,
+      data: {}, draggable: false, zIndex: 1,
+    }
+    const review: Node = {
+      id: 'review-portal', type: 'reviewPortal', position: REVIEW_POS,
+      data: { status: nodeStatus['review-portal'] }, draggable: false, zIndex: 2,
+    }
+    return [...LANE_NODES, ...stdNodes, analysis, review]
   }, [nodeStatus])
+
+  const edges: Edge[] = useMemo(() =>
+    EDGE_DEFS.map((e) => {
+      const active = nodeStatus[e.source] === 'complete'
+      return {
+        id: `${e.source}-${e.target}`,
+        source: e.source, target: e.target,
+        sourceHandle: e.sh, targetHandle: e.th,
+        type: 'labeled',
+        data: { eventName: e.label, active },
+        markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: active ? '#d97757' : '#b0aea5' },
+      }
+    }), [nodeStatus])
 
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
     const stage = node.id as PipelineStage
-    if (store.stageOutputs[stage as keyof typeof store.stageOutputs]) {
-      setSelectedStage(stage)
-    }
-  }, [store.stageOutputs])
+    if (stageOutputs[stage as keyof typeof stageOutputs]) setSelectedStage(stage)
+  }, [stageOutputs])
+
+  // Status bar content
+  const dotColor = isComplete ? 'var(--accent-output)' : isRunning ? 'var(--accent-processing)' : 'var(--color-text-tertiary)'
+  const statusText = isHalted
+    ? 'Pipeline halted — decision rejected.'
+    : isComplete
+      ? 'Pipeline complete.'
+      : isRunning && activeStage
+        ? `Running — ${STAGE_LABEL[activeStage]}`
+        : 'Ready to run.'
 
   return (
-    <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      {/* Top bar */}
-      <div style={{
-        height: 48, display: 'flex', alignItems: 'center', padding: '0 16px',
-        background: '#0d1117', borderBottom: '1px solid #1e293b', gap: 12, flexShrink: 0,
-      }}>
-        <button
-          onClick={store.resetRun}
-          style={{
-            background: 'none', border: '1px solid #1e293b', borderRadius: 6,
-            color: '#94a3b8', fontSize: 12, padding: '4px 10px', cursor: 'pointer',
-          }}>
-          ← New Run
-        </button>
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <span style={{ fontSize: 12, color: '#cbd5e1' }}>
-            {isConfluence ? '📄' : '🎙️'}{' '}
-            {runConfig?.inputLabel}
-            {isConfluence && (
-              <span className="font-mono" style={{ fontSize: 9, fontWeight: 700, background: '#f59e0b', color: '#1c1917', padding: '1px 5px', borderRadius: 3, marginLeft: 6 }}>MOCKUP</span>
-            )}
-          </span>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Page header */}
+      <div style={{ padding: '16px 22px 12px', borderBottom: '0.5px solid var(--color-border-secondary)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Knowledge Ledger</h1>
+            <p className="prose" style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+              Watch a decision move from raw signal to verified knowledge.
+            </p>
+          </div>
+          {!isRunning && !isComplete && !isHalted && (
+            <button onClick={runDemo} style={{
+              background: 'var(--accent-processing)', color: '#faf9f5', border: 'none',
+              borderRadius: 'var(--radius-md)', padding: '8px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            }}>Run demo →</button>
+          )}
         </div>
-        {activeStage && activeStage !== 'review-portal' && !analysisExpanded && (
-          <button
-            onClick={advanceStage}
-            disabled={isNextDisabled}
-            style={{
-              background: isNextDisabled ? '#1e293b' : '#3b82f6',
-              color: isNextDisabled ? '#6b7280' : '#fff',
-              border: 'none', borderRadius: 6,
-              fontSize: 13, fontWeight: 600, padding: '5px 14px', cursor: isNextDisabled ? 'default' : 'pointer',
-              transition: 'background 0.2s',
-            }}>
-            Next →
-          </button>
-        )}
-        {!activeStage && reviewDecision !== 'pending' && (
-          <span style={{ fontSize: 12, color: reviewDecision === 'approved' ? '#22c55e' : '#ef4444' }}>
-            {reviewDecision === 'approved' ? '✓ Done' : '✗ Rejected'}
+
+        {/* Status bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+          <span
+            className={isRunning && !isComplete ? 'pulse-ring' : undefined}
+            style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }}
+          />
+          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{statusText}</span>
+          <span className="font-mono" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+            {completedCount} of 8
           </span>
-        )}
+          {(isRunning || completedCount > 0) && (
+            <button onClick={reset} style={{
+              background: 'transparent', color: 'var(--color-text-secondary)',
+              border: '0.5px solid var(--color-border-secondary)', borderRadius: 'var(--radius-md)',
+              padding: '4px 12px', fontSize: 12, cursor: 'pointer',
+            }}>Reset</button>
+          )}
+        </div>
       </div>
 
       {/* Canvas */}
-      <div ref={wrapperRef} style={{ flex: 1, position: 'relative' }}>
+      <div style={{ flex: 1, position: 'relative' }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodeClick={onNodeClick}
           fitView
-          fitViewOptions={{ padding: 0.3 }}
-          minZoom={0.3}
+          fitViewOptions={{ padding: 0.18 }}
+          minZoom={0.2}
           proOptions={{ hideAttribution: true }}
         >
-          <Background color="#1e293b" gap={20} size={1} />
-          <Controls />
+          <Background color="var(--color-border-tertiary)" gap={22} size={1} />
+          <Controls showInteractive={false} />
         </ReactFlow>
 
         <DetailPanel selectedStage={selectedStage} onClose={() => setSelectedStage(null)} />
@@ -279,9 +241,6 @@ function PipelineFlowInner() {
     </div>
   )
 }
-
-// Public export — wraps inner component in ReactFlowProvider so useReactFlow works
-import { ReactFlowProvider } from '@xyflow/react'
 
 export function PipelineFlow() {
   return (
