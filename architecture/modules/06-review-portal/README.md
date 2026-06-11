@@ -37,7 +37,7 @@ Decision Ledger
 
 | Component              | Purpose                                      |
 | ---------------------- | -------------------------------------------- |
-| **Insight Viewer**     | Render impact, similarity, forecast, recommendations |
+| **Insight Viewer**     | Render ledger diff first, then impact, forecast, recommendations |
 | **Review Workflow**    | Assign, track, and escalate review tasks   |
 | **Edit Controller**    | Allow reviewers to correct or enrich data  |
 | **Approval Controller**| Approve or reject with rationale             |

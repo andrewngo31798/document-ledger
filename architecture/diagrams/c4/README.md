@@ -38,7 +38,7 @@ These diagrams replace earlier exports that had structural drift from the canoni
 - Pipeline order is **Signal Intake → Queue → Knowledge Processing → Classification → Analysis → Review & Approval Portal → Decision Ledger → Consumer API**.
 - **Classification Engine** does not bypass Analysis or write directly to Review.
 - **Analysis Engine** does not write directly to Decision Ledger; approval happens in Review & Approval Portal first.
-- Analysis sub-engines (Impact, Similarity, Forecast, Recommendation) are shown at component level, not as top-level pipeline containers.
+- Analysis sub-engines (Ledger Diff, Impact, Forecast, Recommendation) are shown at component level, not as top-level pipeline containers.
 
 ## Canonical module mapping
 

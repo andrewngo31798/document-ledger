@@ -45,6 +45,7 @@
             "decision_text": { "type": "string" },
             "domain": { "type": "string" },
             "categories": { "type": "array", "items": { "type": "string" } },
+            "ledger_diff_headline": { "type": "string", "description": "Primary headline: what changed vs ledger" },
             "impact_headline": { "type": "string" },
             "top_recommendation": { "type": "string" }
           }

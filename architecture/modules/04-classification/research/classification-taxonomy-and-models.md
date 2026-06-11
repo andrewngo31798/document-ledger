@@ -171,7 +171,7 @@ Analysis Engine sub-engines have different value by decision type:
 | Sub-engine | High value when | Lower value when |
 | ---------- | --------------- | ---------------- |
 | Impact | Technical/architecture, dependency-rich | Pure organizational staffing |
-| Similarity | All types — historical precedent matters | — |
+| Ledger Diff | **All types** — every decision must be compared to ledger baseline | — |
 | Forecast | Architecture, infrastructure, policy with rollout risk | One-off administrative decisions |
 | Recommendation | Governance gaps, ambiguous hybrid decisions | Clear, low-risk operational choices |
 

@@ -14,7 +14,7 @@ All documentation uses the **canonical module names** below. Short labels may ap
 | 04 | Classification Engine | Classification | [../modules/04-classification](../modules/04-classification/) |
 | 05 | Analysis Engine | Analysis | [../modules/05-analysis-engine](../modules/05-analysis-engine/) |
 | 05a | ↳ Impact Engine | Impact | (within Analysis Engine) |
-| 05b | ↳ Similarity Engine | Similarity | (within Analysis Engine) |
+| 05b | ↳ Ledger Diff Engine | Ledger Diff | (within Analysis Engine) |
 | 05c | ↳ Forecast Engine | Forecast | (within Analysis Engine) |
 | 05d | ↳ Recommendation Engine | Recommendation | (within Analysis Engine) |
 | 06 | Review & Approval Portal | Review Portal | [../modules/06-review-portal](../modules/06-review-portal/) |
@@ -47,8 +47,8 @@ Knowledge Processing Engine
 Classification Engine
         ↓
 Analysis Engine
+   ├── Ledger Diff Engine
    ├── Impact Engine
-   ├── Similarity Engine
    ├── Forecast Engine
    └── Recommendation Engine
         ↓
@@ -120,7 +120,7 @@ AI Systems / Search / Agent / RAG
 ┌────────────────────────────────────────────────────┐
 │                  Analysis Engine                   │
 │----------------------------------------------------│
-│ Impact Engine | Similarity Engine                  │
+│ Ledger Diff Engine | Impact Engine                 │
 │ Forecast Engine | Recommendation Engine            │
 └───────────────────────┬────────────────────────────┘
                         │
@@ -165,7 +165,7 @@ AI Systems / Search / Agent / RAG
 | 02 | **Queue / Event Bus** | Decouple stages and scale async workers | Processing job event | Job message |
 | 03 | **Knowledge Processing Engine** | Fetch raw data and build structured knowledge | Job message + source reference | Structured knowledge |
 | 04 | **Classification Engine** | Classify business vs. technical decisions | Structured knowledge | Classified decision |
-| 05 | **Analysis Engine** | Produce insight package from analysis sub-engines | Classified decision | Insight package |
+| 05 | **Analysis Engine** | Explain ledger diff and produce insight package from analysis sub-engines | Classified decision | Insight package |
 | 06 | **Review & Approval Portal** | Human validation before ledger write | Insight package | Approved decision |
 | 07 | **Decision Ledger** | Source of truth for approved decisions | Approved decision | Ledger record |
 | 08 | **Consumer API** | Expose trusted knowledge to downstream systems | Ledger record | API response / RAG context |

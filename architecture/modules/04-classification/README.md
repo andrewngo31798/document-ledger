@@ -29,7 +29,7 @@ Classification Engine = assign domain, category, and analysis routing to each de
 | -------- | -------------- |
 | Domain and category classification | Fetching raw source content |
 | Tag assignment and confidence scoring | Entity extraction or decision detection |
-| Analysis routing profile selection | Impact, similarity, forecast computation |
+| Analysis routing profile selection | Ledger diff, impact, forecast computation |
 | Publishing `decision.classified` | Human review or ledger write |
 
 **Unit of work:** one `decision.classified` event per **decision candidate**, not per knowledge record. A knowledge record with three candidates produces three classified decisions.
@@ -146,7 +146,7 @@ Schema: [events/decision.classified.schema.json](events/decision.classified.sche
     },
     "routing": {
       "analysis_profile": "full_analysis",
-      "sub_engines": ["impact", "similarity", "forecast", "recommendation"],
+      "sub_engines": ["ledger_diff", "impact", "forecast", "recommendation"],
       "priority": "normal"
     },
     "source_context": {
@@ -223,9 +223,9 @@ Categories align with ADR impact areas ([AWS ADR guidance](https://docs.aws.amaz
 
 | Condition | Analysis profile | Sub-engines enabled |
 | --------- | ---------------- | ------------------- |
-| `technical` or `hybrid` + ADR-significant category + confidence ≥ 0.75 | `full_analysis` | impact, similarity, forecast, recommendation |
-| `business` domain + confidence ≥ 0.75 | `standard_analysis` | impact, similarity, recommendation |
-| Low-risk category (`organizational`, `process_governance`) + confidence ≥ 0.80 | `lightweight_analysis` | similarity, recommendation |
+| `technical` or `hybrid` + ADR-significant category + confidence ≥ 0.75 | `full_analysis` | ledger_diff, impact, forecast, recommendation |
+| `business` domain + confidence ≥ 0.75 | `standard_analysis` | ledger_diff, impact, recommendation |
+| Low-risk category (`organizational`, `process_governance`) + confidence ≥ 0.80 | `lightweight_analysis` | ledger_diff, recommendation |
 | Confidence < 0.60 | `review_first` | none (skip automated analysis) |
 | Confidence 0.60–0.74 | `full_analysis` + `priority: high` | all; flag for Review Portal attention |
 

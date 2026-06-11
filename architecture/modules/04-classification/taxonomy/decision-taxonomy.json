@@ -95,19 +95,19 @@
     {
       "id": "full_analysis",
       "label": "Full analysis",
-      "sub_engines": ["impact", "similarity", "forecast", "recommendation"],
+      "sub_engines": ["ledger_diff", "impact", "forecast", "recommendation"],
       "description": "Default for technical and hybrid decisions with architectural significance"
     },
     {
       "id": "standard_analysis",
       "label": "Standard analysis",
-      "sub_engines": ["impact", "similarity", "recommendation"],
+      "sub_engines": ["ledger_diff", "impact", "recommendation"],
       "description": "Business decisions where forecast is lower value"
     },
     {
       "id": "lightweight_analysis",
       "label": "Lightweight analysis",
-      "sub_engines": ["similarity", "recommendation"],
+      "sub_engines": ["ledger_diff", "recommendation"],
       "description": "Low-risk or operational decisions; skip deep impact/forecast"
     },
     {

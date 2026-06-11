@@ -8,15 +8,20 @@ Related: [Module README](../README.md) · [Classification routing](../04-classif
 
 ## Executive summary
 
-The Analysis Engine is not a single LLM call. Production-grade decision analysis requires:
+The Analysis Engine is not a single LLM call. Its **primary job** is to answer:
 
-1. **Deterministic retrieval and graph traversal first** — impact and precedent discovery must be auditable
-2. **LLM synthesis second** — only for summarization, forecasting language, and recommendation drafting grounded in retrieved facts
-3. **DAG orchestration** — Impact + Similarity in parallel → Forecast → Recommendation
-4. **Profile-based execution** — Classification Engine controls cost/latency via `routing.sub_engines`
-5. **Grounded insight packages** — every claim traceable; Review Portal is the trust gate, not the model
+> **What changes compared to the current Decision Ledger?**
 
-Recommended architecture: **Hybrid GraphRAG + rules** with a Decision Knowledge Graph, hybrid precedent retrieval, and governance-oriented recommendation synthesis.
+Production-grade decision analysis requires:
+
+1. **Ledger diff first** — structured comparison against approved records before impact or forecast
+2. **Deterministic retrieval and graph traversal** — impact and precedent discovery must be auditable
+3. **LLM synthesis second** — only for diff summarization, forecasting language, and recommendation drafting grounded in retrieved facts
+4. **DAG orchestration** — Ledger Diff + Impact in parallel → Forecast → Recommendation
+5. **Profile-based execution** — Classification Engine controls cost/latency via `routing.sub_engines`
+6. **Grounded insight packages** — every claim traceable; Review Portal is the trust gate, not the model
+
+Recommended architecture: **Ledger-centric diff** with hybrid retrieval against the Decision Ledger, GraphRAG for impact, and governance-oriented recommendation synthesis.
 
 ---
 
@@ -28,10 +33,10 @@ The four sub-engines are **not independent**:
 
 | Sub-engine | Depends on |
 | ---------- | ---------- |
+| Ledger Diff | Context loader + Decision Ledger (read) |
 | Impact | Context loader only |
-| Similarity | Context loader only |
-| Forecast | Impact map + similar decisions + classified decision |
-| Recommendation | Impact + Similarity + Forecast (+ rules) |
+| Forecast | Ledger diff + impact map + classified decision |
+| Recommendation | Ledger diff + Impact + Forecast (+ rules) |
 
 Running all four in pure parallel wastes compute (Forecast/Recommendation would wait anyway) or produces lower-quality output (Forecast without impact context).
 
@@ -40,9 +45,9 @@ Running all four in pure parallel wastes compute (Forecast/Recommendation would 
 ```
 decision.classified
        │
-       ├─► [Phase 1] Impact Engine ────────┐
+       ├─► [Phase 1] Ledger Diff Engine ─────┐   ← primary output: ledger_diff
        │                                    │
-       └─► [Phase 1] Similarity Engine ────┤
+       └─► [Phase 1] Impact Engine ────────┤
                                             ▼
                               [Phase 2] Forecast Engine
                                             │
@@ -53,7 +58,7 @@ decision.classified
                               Insight Aggregator → Quality Scorer
 ```
 
-Phase 1 parallelizes the two I/O-heavy, independent retrieval engines. Phase 2 and 3 are sequential synthesis stages.
+Phase 1 parallelizes ledger comparison (I/O-heavy retrieval + diff) alongside impact traversal. Phase 2 and 3 are sequential synthesis stages grounded in the diff.
 
 ### 1.2 Profile-based routing
 
@@ -61,14 +66,14 @@ Classification Engine passes `routing.sub_engines`. Analysis Orchestrator valida
 
 | Profile | Enabled nodes | Skip |
 | ------- | ------------- | ---- |
-| `full_analysis` | impact, similarity, forecast, recommendation | — |
-| `standard_analysis` | impact, similarity, recommendation | forecast |
-| `lightweight_analysis` | similarity, recommendation | impact, forecast (impact optional stub) |
+| `full_analysis` | ledger_diff, impact, forecast, recommendation | — |
+| `standard_analysis` | ledger_diff, impact, recommendation | forecast |
+| `lightweight_analysis` | ledger_diff, recommendation | impact, forecast (impact optional stub) |
 | `review_first` | none | all sub-engines |
 
 **Dependency rules:**
 - If `forecast` enabled → `impact` MUST be enabled
-- If `recommendation` enabled → `similarity` MUST be enabled
+- If `recommendation` enabled → `ledger_diff` MUST be enabled
 - Violations → reject job to DLQ with audit error
 
 ### 1.3 Orchestration patterns (production)
@@ -85,8 +90,8 @@ For Document Ledger MVP: **in-process DAG** with stage-level retry. Migrate to T
 
 | Failed stage | Behavior |
 | ------------ | -------- |
+| Ledger Diff fails | Job fails or `ledger_diff.change_classification: no_ledger_match` with warning; no insight without headline |
 | Impact fails | Continue with empty impact_map; lower grounding score; warn in package |
-| Similarity fails | Continue; Forecast uses impact-only; Recommendation uses rules-only |
 | Forecast fails | Continue; Recommendation skips forecast-informed items |
 | Recommendation fails | Return package with analysis sections but empty recommendations |
 | Aggregator/schema fail | Job fails; no `insight.ready`; DLQ |
@@ -205,79 +210,110 @@ Cold start (empty graph): Impact Engine returns entity-only impact list with low
 
 ---
 
-## Part 3 — Similarity Engine
+## Part 3 — Ledger Diff Engine
 
 ### 3.1 Problem definition
 
-Given a classified decision, answer: **What approved or pending decisions in our history are precedents, conflicts, duplicates, or relevant analogies?**
+Given a classified decision candidate, answer the **primary Analysis Engine question**:
 
-This is **precedent retrieval**, analogous to legal case retrieval — semantic similarity alone is insufficient ([InfoQ hybrid retrieval](https://www.infoq.com/articles/vector-search-hybrid-retrieval-rag/)).
+> **What changes compared to the current Decision Ledger?**
 
-### 3.2 Why vector search alone fails
+This is not "find similar documents." It is **structured comparison** against approved organizational decisions — analogous to diffing a proposed change against the canonical record.
 
-| Query need | Vector search | BM25 / metadata | Graph |
-| ---------- | ------------- | --------------- | ----- |
-| "OAuth2 migration" semantic analog | Strong | Weak | Medium |
-| Exact tech tag `PROJ-123` | Weak | Strong | Medium |
-| "Conflicts with ADR-0042" | Weak | Medium | Strong |
-| Cross-document precedent chains | Weak | Weak | Strong |
+Reviewers should see, in order:
+1. **Headline** — one sentence: what changed vs ledger
+2. **Change classification** — first_of_kind | extends | amends | supersedes | conflicts | reaffirms | duplicate
+3. **Field-level deltas** — scope, technology, constraints, policy, timeline, ownership
+4. **Primary ledger reference** — which approved record is the baseline for comparison
 
-Production RAG converged on **hybrid retrieval + rerank** ([InfoQ](https://www.infoq.com/articles/vector-search-hybrid-retrieval-rag/), [Glean enterprise search](https://www.glean.com/blog/hybrid-vs-rag-vector)).
+### 3.2 Why retrieval alone is insufficient
 
-### 3.3 Recommended retrieval pipeline
+Hybrid retrieval finds *related* ledger records. The Ledger Diff Engine must go further:
+
+| Stage | Output | Reviewer value |
+| ----- | ------ | -------------- |
+| Retrieval | Top-N ledger candidates | "These might be relevant" |
+| Relationship classification | supersedes_target, conflicts_with, … | "This is the record to compare against" |
+| **Structured diff** | `changes[]` with candidate vs ledger values | **"OAuth2 replaces SAML on auth-api"** |
+| Change classification | `conflicts` | **"Cannot approve without resolving ADR-0042"** |
+
+### 3.3 Recommended pipeline
 
 ```
-Stage 1 — Candidate generation (parallel)
-  ├── Vector search (decision embedding vs ledger embeddings) → top 30
+Stage 1 — Ledger candidate retrieval (parallel)
+  ├── Vector search (candidate embedding vs ledger embeddings) → top 30
   ├── BM25 / metadata filter (categories, tags, domain, technologies) → top 30
   └── Graph expand (supersedes, conflicts_with, references shared systems) → top 20
 
-Stage 2 — Fusion
-  └── Reciprocal Rank Fusion (RRF, k=60) → merged top 20
+Stage 2 — Fusion + rerank
+  └── RRF (k=60) → cross-encoder rerank → top 5 ledger records
 
-Stage 3 — Rerank
-  └── Cross-encoder or LLM pairwise on decision text (not whole doc) → top 5
+Stage 3 — Primary reference selection
+  └── Pick baseline record (highest rerank + graph relationship to same scope/system)
 
-Stage 4 — Relationship classification
-  └── Classify each hit: precedent | conflicts | supersedes_candidate | duplicate_risk | related
+Stage 4 — Structured diff (deterministic + LLM-assisted)
+  ├── Extract comparable dimensions from candidate + primary ledger record
+  ├── Diff each dimension: added | removed | modified | replaced | unchanged
+  ├── Ground each delta with evidence_candidate + evidence_ledger spans
+  └── LLM synthesizes headline + summary ONLY from structured diff
+
+Stage 5 — Change classification
+  └── Map diff pattern → first_of_kind | extends | amends | supersedes | conflicts | reaffirms | duplicate
 ```
 
-RRF formula: `RRF(d) = Σ 1/(k + rank)` — avoids normalizing incompatible scores ([InfoQ hybrid retrieval](https://www.infoq.com/articles/vector-search-hybrid-retrieval-rag/)).
+### 3.4 Comparable dimensions
 
-### 3.4 Embedding strategy
+| Dimension | Candidate source | Ledger source |
+| --------- | ---------------- | ------------- |
+| `scope` | Entities (systems, projects) | Ledger record scope metadata |
+| `technology` | Technology entities | Ledger technology choices |
+| `constraint` | Decision text (must, shall, require) | Prior constraints |
+| `policy` | Compliance/security categories | Prior policy decisions |
+| `timeline` | Dates, milestones in source | Ledger effective dates |
+| `ownership` | Team entities | Ledger owning team |
+| `status` | Proposed vs deprecated language | Ledger record status |
+| `rationale` | Evidence span reasoning | Prior rationale section |
 
-| Field embedded | Purpose |
-| -------------- | ------- |
-| Decision candidate text | Primary semantic match |
-| Categories + tags | Weighted metadata boost |
-| Evidence span | Grounding verification |
-| Approved ledger summary (for index) | Historical precedent index |
+### 3.5 Embedding and indexing
 
-Re-index Decision Ledger on every approved write (module 07 → Analysis Engine read path).
+Re-index Decision Ledger on every approved write (module 07 → Analysis Engine read path). Embed decision candidate text, categories, tags, and approved ledger summaries.
 
-### 3.5 Trust tiers for historical matches
+### 3.6 Trust tiers for ledger reads
 
 | Source | Trust weight | Use |
 | ------ | ------------ | --- |
-| Approved Decision Ledger | 1.0 | Primary precedent store |
-| Pending insight packages | 0.3 | Flag as unapproved; do not treat as precedent |
-| Raw knowledge records | 0.1 | Context only |
+| Approved Decision Ledger | 1.0 | **Only source for diff baseline** |
+| Pending insight packages | 0.0 | Never used for diff |
+| Raw knowledge records | 0.0 | Never used for diff |
 
-Similarity Engine queries **approved ledger only** for precedent relationship classification.
-
-### 3.6 Cold start behavior
+### 3.7 Cold start behavior
 
 When ledger is empty:
-- Return `similar_decisions: []`
-- Add quality warning `no_precedents_available`
-- Forecast Engine shifts to category-based generic risk patterns
-- Recommendation Engine adds `document_as_first_adr` recommendation
+- `ledger_diff.change_classification: first_of_kind`
+- `ledger_diff.headline`: "No approved decisions in ledger — this would establish a new baseline"
+- Add quality warning `no_ledger_baseline`
+- Recommendation Engine adds `document_as_first_adr` with `ledger_action: approve_new`
 
-### 3.7 Graph-augmented similarity (Phase 2)
+### 3.8 Conflict and supersession detection
 
-When Decision Knowledge Graph has `supersedes` / `conflicts_with` edges between ledger records, boost or demote retrieval candidates accordingly ([GraphRAG hybrid routing](https://medium.com/graph-praxis/graphrag-vs-hipporag-vs-pathrag-vs-og-rag-choosing-the-right-architecture-for-your-knowledge-graph-a4745e8b125f)).
+| Diff pattern | Classification | Recommendation hint |
+| ------------ | -------------- | ------------------- |
+| Same scope + replaced technology | `supersedes` or `conflicts` | `approve_supersedes` or `resolve_conflict` |
+| Same scope + added constraint | `amends` | `approve_amendment` |
+| Same scope + no material delta | `reaffirms` | Fast-track |
+| High similarity, same scope | `duplicate` | `reject_duplicate` |
+| New scope/system | `extends` or `first_of_kind` | `approve_new` |
 
-Local search: vector seeds → 2-hop graph expansion. Use global community summaries only for portfolio-level analysis (Phase 3).
+Graph `supersedes` / `conflicts_with` edges boost conflict/supersedes classification.
+
+### 3.9 Anti-patterns
+
+| Anti-pattern | Problem |
+| ------------ | ------- |
+| Similarity list without diff | Reviewers still ask "so what changed?" |
+| LLM-only diff | Hallucinated deltas vs ledger |
+| Diff against unapproved records | Compares to draft noise |
+| Missing primary reference | Cannot audit baseline |
 
 ---
 
@@ -285,7 +321,7 @@ Local search: vector seeds → 2-hop graph expansion. Use global community summa
 
 ### 4.1 Problem definition
 
-Given impact map + similar decisions + current classified decision, answer: **What outcomes and risks are likely, and on what horizon?**
+Given ledger diff + impact map + classified decision, answer: **What outcomes and risks are likely if we adopt this change, and on what horizon?**
 
 Forecasting organizational decisions is **not prediction** — it is **structured consequence analysis** grounded in evidence, aligned with ADR consequence sections ([Structured MADR](https://github.com/zircote/structured-madr), [AWS ADR guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/)).
 
@@ -295,9 +331,9 @@ Forecasting organizational decisions is **not prediction** — it is **structure
 
 ```
 Input assembly
-  • Classified decision + evidence span
+  • Ledger diff (change classification, primary reference, field deltas)
   • Impact map (affected systems, risk dimensions)
-  • Similar decisions (outcomes from ledger metadata if available)
+  • Related ledger records (outcomes from ledger metadata if available)
   • Category-specific forecast templates
 
 Pattern extraction (deterministic)
@@ -380,7 +416,7 @@ Layer 1 — Rule engine (deterministic, always runs)
   • IF classification.confidence < 0.65 → recommend manual_reclassification (recommended)
 
 Layer 2 — LLM synthesis (optional enrichment)
-  • Input: impact_map + similar_decisions + forecast + rule outputs
+  • Input: impact_map + ledger_diff + forecast + rule outputs
   • Output: additional recommended/optional items with rationale
   • MUST NOT override required rule items
   • MUST include evidence_refs for each item
@@ -421,14 +457,15 @@ Insight Aggregator:
 
 | Score | Computation |
 | ----- | ----------- |
-| `completeness_score` | Weighted section presence for profile (e.g., full_analysis expects all 4 sections) |
-| `grounding_score` | % claims with valid evidence in impact, similar, forecast, recommendations |
-| `review_priority` | Base from Classification `routing.priority`; upgrade if conflict detected, high blast radius, or low grounding |
+| `completeness_score` | Weighted section presence for profile (full_analysis expects ledger_diff + impact + forecast + recommendations) |
+| `grounding_score` | % claims with valid evidence in ledger_diff, impact, forecast, recommendations |
+| `review_priority` | Base from Classification `routing.priority`; upgrade on `ledger_diff.change_classification: conflicts`, high blast radius, or low grounding |
 
 | Condition | review_priority |
 | --------- | --------------- |
 | `review_first` profile | urgent |
-| Conflict detected in similar decisions | urgent |
+| `ledger_diff.change_classification: conflicts` | urgent |
+| `ledger_diff.change_classification: supersedes` | high |
 | blast_radius_score > 0.8 | high |
 | grounding_score < 0.5 | high |
 | Default | normal |
@@ -436,6 +473,7 @@ Insight Aggregator:
 ### 6.3 Review Portal contract
 
 Review Portal expects:
+- **`ledger_diff` rendered first** — headline, change badge, field-level delta table
 - Renderable sections per sub-engine output
 - Provenance expandable (which model, which ledger IDs)
 - Required recommendations flagged as checklist
@@ -447,12 +485,12 @@ Review Portal expects:
 
 ### 7.1 Role in Analysis Engine
 
-The graph is the **shared substrate** for Impact and Similarity:
+The graph is the **shared substrate** for Impact and Ledger Diff:
 
 | Engine | Graph use |
 | ------ | --------- |
+| Ledger Diff | supersedes/conflicts_with edges, shared system overlap for baseline selection |
 | Impact | Multi-hop dependency traversal |
-| Similarity | supersedes/conflicts_with edges, shared system overlap |
 | Forecast | Precedent outcome paths (Phase 2) |
 | Recommendation | Conflict detection |
 
@@ -493,8 +531,8 @@ Do not run full GraphRAG on every decision — 80% of queries need local travers
 
 | Sub-engine | LLM role |
 | ---------- | -------- |
+| Ledger Diff | Reranker + headline/summary synthesis from structured diff |
 | Impact | Summarize traversal results (optional) |
-| Similarity | Reranker only (Phase 2) |
 | Forecast | Synthesize outcome narratives from structured inputs |
 | Recommendation | Enrich rule output with contextual suggestions |
 
@@ -536,7 +574,8 @@ Label **100–200 insight packages** with expert review:
 | Dimension | Labels |
 | --------- | ------ |
 | Impact accuracy | Correct affected systems (precision/recall vs expert) |
-| Similarity relevance | NDCG@5 on precedent ranking |
+| Ledger diff accuracy | Correct change_classification + field deltas vs expert |
+| Ledger retrieval relevance | NDCG@5 on primary reference selection |
 | Forecast usefulness | Expert rating 1–5 (not accuracy of prediction) |
 | Recommendation completeness | Required governance items captured |
 | Grounding | % claims with valid evidence |
@@ -546,7 +585,8 @@ Label **100–200 insight packages** with expert review:
 | Metric | MVP | Production |
 | ------ | --- | ---------- |
 | Impact system precision | ≥ 0.70 | ≥ 0.85 |
-| Similarity NDCG@5 | ≥ 0.60 | ≥ 0.75 |
+| Ledger diff classification accuracy | ≥ 0.75 | ≥ 0.90 |
+| Ledger retrieval NDCG@5 | ≥ 0.60 | ≥ 0.75 |
 | Required recommendation recall | ≥ 0.90 | ≥ 0.95 |
 | Grounding score (automated) | ≥ 0.80 | ≥ 0.90 |
 | P95 latency full_analysis | < 30s | < 15s |
@@ -566,7 +606,7 @@ Adopt decision-based evaluation (DeepEval DAG metric concept): each sub-engine o
 | --------- | -------------- |
 | Orchestrator | In-process DAG |
 | Impact | Entity → static tenant graph (JSON); 2-hop traversal |
-| Similarity | pgvector + category filter; no rerank |
+| Ledger Diff | pgvector + category filter; rule-based field diff; no rerank |
 | Forecast | Template + LLM synthesis with grounded_in validation |
 | Recommendation | Rule engine only (10–15 rules) |
 | Graph | PostgreSQL adjacency tables |
@@ -576,7 +616,7 @@ Adopt decision-based evaluation (DeepEval DAG metric concept): each sub-engine o
 | Component | Implementation |
 | --------- | -------------- |
 | Impact | CMDB integration; org mapping pass; risk dimension scoring |
-| Similarity | Hybrid RRF + cross-encoder rerank |
+| Ledger Diff | Hybrid RRF + cross-encoder rerank; structured dimension diff |
 | Forecast | Precedent outcome extraction from ledger metadata |
 | Recommendation | Rules + LLM enrichment |
 | Graph | Neo4j/FalkorDB; incremental merge on ledger write |
@@ -586,7 +626,7 @@ Adopt decision-based evaluation (DeepEval DAG metric concept): each sub-engine o
 | Component | Implementation |
 | --------- | -------------- |
 | Orchestrator | Temporal workflows; re-analysis support |
-| Similarity | Graph edge relationship classifier |
+| Ledger Diff | Graph edge boost for conflict/supersedes classification |
 | Forecast | Fine-tuned forecast summarizer (DRAFT-style RAG+FT) |
 | Evaluation | Continuous active learning from Review Portal edits |
 
@@ -599,8 +639,8 @@ Adopt decision-based evaluation (DeepEval DAG metric concept): each sub-engine o
 | 1 | Graph store | PostgreSQL adjacency MVP → graph DB at scale |
 | 2 | Vector DB | pgvector co-located with PostgreSQL |
 | 3 | LLM usage | Synthesis only; retrieval deterministic |
-| 4 | Execution order | DAG: parallel Impact+Similarity → Forecast → Recommendation |
-| 5 | Conflict handling | Similarity detects; Recommendation requires resolution; Review priority urgent |
+| 4 | Execution order | DAG: parallel Ledger Diff+Impact → Forecast → Recommendation |
+| 5 | Conflict handling | Ledger Diff detects; Recommendation requires resolution; Review priority urgent |
 
 ---
 
@@ -609,11 +649,12 @@ Adopt decision-based evaluation (DeepEval DAG metric concept): each sub-engine o
 | Anti-pattern | Correct approach |
 | ------------ | ---------------- |
 | Single LLM prompt for "analyze this decision" | Four sub-engines with grounded retrieval |
-| Skipping Similarity on cold start without warning | Explicit quality warnings in package |
+| Skipping ledger diff on cold start without warning | `first_of_kind` classification + explicit quality warnings |
+| Similarity list without structured diff | Ledger Diff Engine with field-level `changes[]` |
 | Recommendations that auto-execute | Proposals only; Review Portal approves |
 | Forecast as point probability | Likelihood bands + confidence band |
 | Parallel all sub-engines ignoring dependencies | DAG orchestration |
-| Vector-only precedent search | Hybrid RRF + rerank |
+| Vector-only ledger retrieval | Hybrid RRF + rerank + structured diff |
 | Impact from LLM guessing | Graph traversal + org mapping |
 | Bypass Review Portal for high-confidence analysis | All packages go to Review; confidence affects priority only |
 

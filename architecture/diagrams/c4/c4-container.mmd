@@ -17,14 +17,14 @@ C4Container
         Container(queue, "Queue / Event Bus", "Kafka / SQS / BullMQ", "Buffers and routes async pipeline events")
         Container(knowledgeProcessing, "Knowledge Processing Engine", "Worker service", "Fetches raw content, normalizes text, detects decision candidates")
         Container(classification, "Classification Engine", "Worker service", "Classifies business vs technical decisions")
-        Container(analysis, "Analysis Engine", "Worker service", "Orchestrates impact, similarity, forecast, and recommendation sub-engines")
+        Container(analysis, "Analysis Engine", "Worker service", "Orchestrates ledger diff, impact, forecast, and recommendation sub-engines")
         Container(reviewPortal, "Review & Approval Portal", "Web application", "Human review, edit, approve, and reject workflow")
         Container(ledger, "Decision Ledger", "Backend service", "Stores approved decisions with versioning and audit trail")
         Container(consumerApi, "Consumer API", "REST / GraphQL API", "Search, retrieval, and RAG context for downstream systems")
 
         ContainerDb(postgres, "PostgreSQL", "Relational database", "Jobs, structured knowledge, ledger records, audit logs")
         ContainerDb(redis, "Redis", "In-memory store", "Idempotency keys and short-lived state")
-        ContainerDb(vectorDb, "Vector DB", "Embedding index", "Similarity search and semantic retrieval")
+        ContainerDb(vectorDb, "Vector DB", "Embedding index", "Ledger diff retrieval and semantic search")
         ContainerDb(objectStore, "Object Storage", "Blob store", "Raw source content and artifacts")
     }
 

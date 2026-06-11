@@ -29,7 +29,7 @@ Knowledge Processing Engine = fetch raw content and produce structured, tenant-s
 | In scope | Out of scope |
 | -------- | -------------- |
 | Fetching and normalizing source content | Business / technical classification |
-| Entity and decision-candidate extraction | Impact, similarity, forecast analysis |
+| Entity and decision-candidate extraction | Ledger diff, impact, forecast analysis |
 | Structured knowledge persistence | Human review and approval |
 | Publishing `source.ingested` | Writing to Decision Ledger |
 
