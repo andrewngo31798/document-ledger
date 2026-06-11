@@ -162,12 +162,11 @@
         },
         "risk_dimensions": {
           "type": "object",
+          "description": "Impact risk scores (0–1). compliance and financial deferred — may involve confidential data.",
           "properties": {
-            "technical": { "type": "number" },
-            "delivery": { "type": "number" },
-            "people": { "type": "number" },
-            "compliance": { "type": "number" },
-            "financial": { "type": "number" }
+            "technical": { "type": "number", "minimum": 0, "maximum": 1 },
+            "delivery": { "type": "number", "minimum": 0, "maximum": 1 },
+            "people": { "type": "number", "minimum": 0, "maximum": 1 }
           }
         }
       }

@@ -150,7 +150,8 @@ Pass 2 — Graph traversal (2–3 hops)
 
 Pass 3 — Organizational + risk synthesis
   • Map affected systems → owning teams
-  • Score 5 risk dimensions: technical, delivery, people, compliance, financial
+  • Score 3 risk dimensions: technical, delivery, people
+  • Skip compliance and financial for now (may involve confidential data; deferred to Phase 2+)
   • LLM summarizes ONLY from structured traversal results (no free-form guessing)
 ```
 
@@ -192,9 +193,7 @@ Cold start (empty graph): Impact Engine returns entity-only impact list with low
   "risk_dimensions": {
     "technical": 0.7,
     "delivery": 0.5,
-    "people": 0.4,
-    "compliance": 0.6,
-    "financial": 0.2
+    "people": 0.4
   }
 }
 ```
@@ -356,13 +355,15 @@ DRAFT research (Domain Specific Retrieval Augmented Few-Shot Fine-Tuning for ADR
 
 ### 4.3 Risk dimensions (from impact + category)
 
-| Dimension | Forecast triggers |
-| --------- | ------------------- |
-| Technical | Integration breakage, migration complexity, tech debt |
-| Delivery | Timeline slip, cross-team coordination |
-| People | Training, ownership shift, on-call burden |
-| Compliance | Audit, regulatory, data residency |
-| Financial | License cost, infra cost, vendor lock-in |
+| Dimension | Forecast triggers | Phase 1 |
+| --------- | ------------------- | ------- |
+| Technical | Integration breakage, migration complexity, tech debt | **Enabled** |
+| Delivery | Timeline slip, cross-team coordination | **Enabled** |
+| People | Training, ownership shift, on-call burden | **Enabled** |
+| Compliance | Audit, regulatory, data residency | **Deferred** — confidential data |
+| Financial | License cost, infra cost, vendor lock-in | **Deferred** — confidential data |
+
+Phase 1 scores only `technical`, `delivery`, and `people` in `impact_map.risk_dimensions`. Compliance and financial forecast triggers are omitted until tenant data-handling and access controls are defined.
 
 Align with Structured MADR per-option risk assessment (technical, schedule, ecosystem).
 

@@ -54,7 +54,7 @@ export interface ImpactResult {
   risk_dimensions: {
     technical: 'low' | 'medium' | 'high'
     delivery: 'low' | 'medium' | 'high'
-    compliance: 'low' | 'medium' | 'high'
+    people: 'low' | 'medium' | 'high'
   }
 }
 

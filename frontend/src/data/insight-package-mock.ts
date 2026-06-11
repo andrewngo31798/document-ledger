@@ -30,7 +30,7 @@ export const insightPackageMock: InsightPackage = {
     risk_dimensions: {
       technical: 'medium',
       delivery: 'low',
-      compliance: 'low',
+      people: 'low',
     },
   },
   forecast_report: {

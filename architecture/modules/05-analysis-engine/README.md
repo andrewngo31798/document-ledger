@@ -150,6 +150,16 @@ Deep research per sub-engine: [research/analysis-engine-deep-research.md](resear
 | **Forecast Engine** | What may happen if we adopt this change? | Pattern analysis from ledger precedent outcomes + risk dimensions | `forecast_report` |
 | **Recommendation Engine** | What should the team do about this delta? | Governance rules + grounded LLM synthesis | `recommendations[]` |
 
+### Impact map `risk_dimensions` (Phase 1 scope)
+
+| Dimension | Scored | Notes |
+| --------- | ------ | ----- |
+| `technical` | Yes | Systems, integration, migration complexity |
+| `delivery` | Yes | Timeline, cross-team coordination |
+| `people` | Yes | Ownership, training, on-call burden |
+| `compliance` | **Deferred** | May involve confidential data |
+| `financial` | **Deferred** | May involve confidential data |
+
 ### Ledger diff change classifications
 
 | Classification | Meaning | Typical reviewer action |
