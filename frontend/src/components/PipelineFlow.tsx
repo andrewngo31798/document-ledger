@@ -12,10 +12,10 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import {
-  IconAntenna, IconTopologyStar, IconBrain, IconTags, IconDatabase, IconApi, type Icon,
+  IconAntenna, IconTopologyStar, IconBrain, IconTags, IconTrendingUp, IconDatabase, IconApi, type Icon,
 } from '@tabler/icons-react'
 
-import { usePipelineStore } from '../store/pipeline.store'
+import { usePipelineStore, stagesForPath } from '../store/pipeline.store'
 import { usePipelineRunner } from '../hooks/usePipelineRunner'
 import { useDemoNarration } from '../hooks/useDemoNarration'
 import { DemoNarrationPanel } from './DemoNarrationPanel'
@@ -36,9 +36,9 @@ const nodeTypes = {
 }
 const edgeTypes = { labeled: LabeledEdge }
 
-const RUN_STAGES: PipelineStage[] = [
+const ALL_STAGES: PipelineStage[] = [
   'signal-intake', 'event-bus', 'knowledge-processing', 'classification',
-  'analysis-engine', 'review-portal', 'decision-ledger', 'consumer-api',
+  'forecast-engine', 'analysis-engine', 'review-portal', 'decision-ledger', 'consumer-api',
 ]
 
 // Static node definitions (positions + lane + icon). Snake layout for clean cross-lane drops.
@@ -48,8 +48,9 @@ const STD_NODES: StdDef[] = [
   { id: 'event-bus', label: 'Queue', subtitle: 'Async event routing', lane: 'intake', icon: IconTopologyStar, x: 380, y: 30 },
   { id: 'knowledge-processing', label: 'Knowledge Processing', subtitle: 'Fetch, extract & detect', lane: 'processing', icon: IconBrain, x: 380, y: 243 },
   { id: 'classification', label: 'Classification', subtitle: 'Domain, confidence & routing', lane: 'processing', icon: IconTags, x: 720, y: 243 },
+  { id: 'forecast-engine', label: 'Forecast', subtitle: 'Change capture · seen before?', lane: 'processing', icon: IconTrendingUp, x: 720, y: 360 },
   { id: 'decision-ledger', label: 'Decision Ledger', subtitle: 'Approved records & audit trail', lane: 'output', icon: IconDatabase, x: 1420, y: 500 },
-  { id: 'consumer-api', label: 'Consumer API', subtitle: 'Search, RAG & agents', lane: 'output', icon: IconApi, x: 1720, y: 500 },
+  { id: 'consumer-api', label: 'Consumer API', subtitle: 'Verified answers · RAG', lane: 'output', icon: IconApi, x: 1720, y: 500 },
 ]
 const ANALYSIS_POS = { x: 1040, y: 185 }
 const REVIEW_POS = { x: 1420, y: 185 }
@@ -74,6 +75,8 @@ const EDGE_DEFS: EdgeDef[] = [
   { source: 'signal-intake', target: 'event-bus', sh: 'r', th: 'l', label: 'source.triggered' },
   { source: 'event-bus', target: 'knowledge-processing', sh: 'b', th: 't', label: 'source.triggered' },
   { source: 'knowledge-processing', target: 'classification', sh: 'r', th: 'l', label: 'source.ingested' },
+  { source: 'knowledge-processing', target: 'forecast-engine', sh: 'b', th: 't', label: 'change.detect' },
+  { source: 'forecast-engine', target: 'consumer-api', sh: 'b', th: 't', label: 'change.preview.ready' },
   { source: 'classification', target: 'analysis-engine', sh: 'r', th: 'l', label: 'decision.classified' },
   { source: 'analysis-engine', target: 'review-portal', sh: 'r', th: 'l', label: 'insight.ready' },
   { source: 'review-portal', target: 'decision-ledger', sh: 'b', th: 't', label: 'decision.approved' },
@@ -82,6 +85,7 @@ const EDGE_DEFS: EdgeDef[] = [
 
 function PipelineFlowInner() {
   const runConfig = usePipelineStore((s) => s.runConfig)
+  const primaryPath = usePipelineStore((s) => s.primaryPath)
   const nodeStatus = usePipelineStore((s) => s.nodeStatus)
   const activeStage = usePipelineStore((s) => s.activeStage)
   const reviewDecision = usePipelineStore((s) => s.reviewDecision)
@@ -91,15 +95,19 @@ function PipelineFlowInner() {
   const { advanceStage } = usePipelineRunner()
   const { fitView } = useReactFlow()
   const beat = useDemoNarration()
-  const [selectedStage, setSelectedStage] = useState<PipelineStage | null>(null)
+  const setDetailPanelFocus = usePipelineStore((s) => s.setDetailPanelFocus)
+  const analysisExpanded = usePipelineStore((s) => s.analysisExpanded)
   const [isRunning, setIsRunning] = useState(false)
+
+  const runStages = stagesForPath(primaryPath)
+  const totalStages = runStages.length
 
   // Keep a stable ref to advanceStage so the auto-run effect doesn't reset on every render.
   const advanceRef = useRef(advanceStage)
   advanceRef.current = advanceStage
 
   const activeStatus = activeStage ? nodeStatus[activeStage] : null
-  const completedCount = RUN_STAGES.filter((s) => nodeStatus[s] === 'complete').length
+  const completedCount = runStages.filter((s) => nodeStatus[s] === 'complete').length
   const isComplete = nodeStatus['consumer-api'] === 'complete'
   const isHalted = reviewDecision === 'rejected'
 
@@ -126,6 +134,15 @@ function PipelineFlowInner() {
     return () => clearTimeout(t)
   }, [fitView])
 
+  useEffect(() => {
+    if (!analysisExpanded) return
+    const t = setTimeout(
+      () => fitView({ nodes: [{ id: 'analysis-engine' }], padding: 0.35, duration: 500 }),
+      80,
+    )
+    return () => clearTimeout(t)
+  }, [analysisExpanded, fitView])
+
   const nodes: Node[] = useMemo(() => {
     const stdNodes: Node[] = STD_NODES.map((n) => ({
       id: n.id, type: 'standard',
@@ -146,7 +163,14 @@ function PipelineFlowInner() {
 
   const edges: Edge[] = useMemo(() =>
     EDGE_DEFS.map((e) => {
-      const active = nodeStatus[e.source] === 'complete'
+      const sourceDone = nodeStatus[e.source] === 'complete'
+      const targetRelevant =
+        e.target === 'forecast-engine'
+          ? primaryPath === 'discussion'
+          : e.source === 'forecast-engine'
+            ? primaryPath === 'discussion'
+            : !ALL_STAGES.includes(e.target) || nodeStatus[e.target] !== 'skipped'
+      const active = sourceDone && targetRelevant
       return {
         id: `${e.source}-${e.target}`,
         source: e.source, target: e.target,
@@ -155,12 +179,14 @@ function PipelineFlowInner() {
         data: { eventName: e.label, active },
         markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: active ? '#d97757' : '#b0aea5' },
       }
-    }), [nodeStatus])
+    }), [nodeStatus, primaryPath])
 
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
     const stage = node.id as PipelineStage
-    if (stageOutputs[stage as keyof typeof stageOutputs]) setSelectedStage(stage)
-  }, [stageOutputs])
+    if (stageOutputs[stage as keyof typeof stageOutputs]) {
+      setDetailPanelFocus({ stage })
+    }
+  }, [stageOutputs, setDetailPanelFocus])
 
   // Status bar content
   const dotColor = isComplete ? 'var(--accent-output)' : isRunning ? 'var(--accent-processing)' : 'var(--color-text-tertiary)'
@@ -199,7 +225,7 @@ function PipelineFlowInner() {
           />
           <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{statusText}</span>
           <span className="font-mono" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-            {completedCount} of 8
+            {completedCount} of {totalStages}
           </span>
           {(isRunning || completedCount > 0) && (
             <button onClick={reset} style={{
@@ -230,7 +256,7 @@ function PipelineFlowInner() {
           <Controls showInteractive={false} />
         </ReactFlow>
 
-        <DetailPanel selectedStage={selectedStage} onClose={() => setSelectedStage(null)} />
+        <DetailPanel onClose={() => setDetailPanelFocus(null)} />
       </div>
     </div>
   )

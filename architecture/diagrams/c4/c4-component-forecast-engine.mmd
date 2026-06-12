@@ -1,0 +1,30 @@
+C4Component
+    title Component Diagram — Forecast Engine (Module 09)
+
+    Container_Ext(kpe, "Knowledge Processing Engine", "Worker service", "Emits source.ingested with routing hints")
+    Container_Ext(consumerApi, "Consumer API", "REST API", "Serves change previews and precedent answers")
+    Container_Ext(ledger, "Decision Ledger", "Backend service", "Approved decisions for precedent retrieval")
+    Container_Ext(vectorDb, "Vector DB", "Embedding index", "Discussion and ledger embeddings")
+
+    Container_Boundary(forecastBoundary, "Forecast Engine") {
+        Component(jobConsumer, "Job Consumer", "Worker handler", "Consumes source.ingested where primary_path = discussion")
+        Component(changeDetector, "Change Detector", "Analysis component", "Detects material shifts in discussion content")
+        Component(precedentEngine, "Precedent Engine", "Retrieval component", "Answers have we seen this before via ledger search")
+        Component(forwardProjector, "Forward Projector", "Synthesis component", "Grounded forward signals from shifts + precedents")
+        Component(previewAggregator, "Preview Aggregator", "Orchestrator", "Merges outputs into change_preview package")
+        Component(eventPublisher, "Event Publisher", "Publisher", "Publishes change.preview.ready events")
+    }
+
+    Rel(kpe, jobConsumer, "Sends discussion-path ingest", "async")
+    Rel(jobConsumer, changeDetector, "Invokes")
+    Rel(jobConsumer, precedentEngine, "Invokes")
+    Rel(precedentEngine, ledger, "Reads approved records")
+    Rel(precedentEngine, vectorDb, "Queries embeddings")
+    Rel(changeDetector, forwardProjector, "Provides detected_shifts")
+    Rel(precedentEngine, forwardProjector, "Provides precedent_matches")
+    Rel(jobConsumer, forwardProjector, "Invokes")
+    Rel(changeDetector, previewAggregator, "Contributes shifts")
+    Rel(precedentEngine, previewAggregator, "Contributes precedents")
+    Rel(forwardProjector, previewAggregator, "Contributes forward_signals")
+    Rel(previewAggregator, eventPublisher, "Hands off change preview")
+    Rel(eventPublisher, consumerApi, "Publishes change.preview.ready", "async")

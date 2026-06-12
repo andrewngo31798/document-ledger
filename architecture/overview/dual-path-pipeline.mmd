@@ -1,0 +1,24 @@
+flowchart TB
+    sources[External Sources]
+    intake[Signal Intake]
+    queue[Queue / Event Bus]
+    kpe[Knowledge Processing Engine]
+
+    sources --> intake --> queue --> kpe
+
+    kpe --> ingested["source.ingested<br/>+ routing.primary_path"]
+
+    ingested -->|decision_candidate_count ≥ 1| classification[Classification Engine]
+    classification --> classified[decision.classified]
+    classified --> analysis[Analysis Engine<br/>Ledger Diff · Impact · Recommendation]
+    analysis --> insight[insight.ready]
+    insight --> review[Review & Approval Portal]
+    review --> ledger[Decision Ledger]
+
+    ingested -->|discussion_signal · no decision| forecast[Forecast Engine — Module 09<br/>Change · Precedent · Forward]
+    forecast --> preview[change.preview.ready]
+
+    ledger --> consumer[Consumer API]
+    preview --> consumer
+
+    ledger -.->|precedent read| forecast

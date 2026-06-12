@@ -29,7 +29,7 @@ Classification Engine = assign domain, category, and analysis routing to each de
 | -------- | -------------- |
 | Domain and category classification | Fetching raw source content |
 | Tag assignment and confidence scoring | Entity extraction or decision detection |
-| Analysis routing profile selection | Ledger diff, impact, forecast computation |
+| Analysis routing profile selection (**decision path**) | Ledger diff, impact, recommendation |
 | Publishing `decision.classified` | Human review or ledger write |
 
 **Unit of work:** one `decision.classified` event per **decision candidate**, not per knowledge record. A knowledge record with three candidates produces three classified decisions.
@@ -146,7 +146,7 @@ Schema: [events/decision.classified.schema.json](events/decision.classified.sche
     },
     "routing": {
       "analysis_profile": "full_analysis",
-      "sub_engines": ["ledger_diff", "impact", "forecast", "recommendation"],
+      "sub_engines": ["ledger_diff", "impact", "recommendation"],
       "priority": "normal"
     },
     "source_context": {
@@ -184,7 +184,7 @@ Schema: [events/decision.classified.schema.json](events/decision.classified.sche
 | `status` | VARCHAR | classified, failed, skipped |
 | `created_at` | TIMESTAMPTZ | Record creation |
 
-Candidates with `decision_candidate_count = 0` on a knowledge record produce no `decision.classified` events; the job completes with audit note `no_candidates`.
+Candidates with `decision_candidate_count = 0` produce no `decision.classified` events. If `routing.primary_path = discussion`, the record is routed to [Forecast Engine](../09-forecast-engine/) instead — not to Classification. Pure informational content (`primary_path = none`) completes with audit only.
 
 ---
 
@@ -223,7 +223,7 @@ Categories align with ADR impact areas ([AWS ADR guidance](https://docs.aws.amaz
 
 | Condition | Analysis profile | Sub-engines enabled |
 | --------- | ---------------- | ------------------- |
-| `technical` or `hybrid` + ADR-significant category + confidence ≥ 0.75 | `full_analysis` | ledger_diff, impact, forecast, recommendation |
+| `technical` or `hybrid` + ADR-significant category + confidence ≥ 0.75 | `full_analysis` | ledger_diff, impact, recommendation |
 | `business` domain + confidence ≥ 0.75 | `standard_analysis` | ledger_diff, impact, recommendation |
 | Low-risk category (`organizational`, `process_governance`) + confidence ≥ 0.80 | `lightweight_analysis` | ledger_diff, recommendation |
 | Confidence < 0.60 | `review_first` | none (skip automated analysis) |

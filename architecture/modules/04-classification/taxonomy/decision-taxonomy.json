@@ -95,7 +95,7 @@
     {
       "id": "full_analysis",
       "label": "Full analysis",
-      "sub_engines": ["ledger_diff", "impact", "forecast", "recommendation"],
+      "sub_engines": ["ledger_diff", "impact", "recommendation"],
       "description": "Default for technical and hybrid decisions with architectural significance"
     },
     {

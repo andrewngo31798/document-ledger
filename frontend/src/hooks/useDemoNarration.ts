@@ -4,6 +4,7 @@ import { resolveDemoBeat, type DemoBeat } from '../data/demo-script'
 
 export function useDemoNarration(): DemoBeat | null {
   const view = usePipelineStore((s) => s.view)
+  const primaryPath = usePipelineStore((s) => s.primaryPath)
   const activeStage = usePipelineStore((s) => s.activeStage)
   const nodeStatus = usePipelineStore((s) => s.nodeStatus)
   const subEngineStatus = usePipelineStore((s) => s.subEngineStatus)
@@ -13,11 +14,12 @@ export function useDemoNarration(): DemoBeat | null {
     () =>
       resolveDemoBeat({
         view,
+        primaryPath,
         activeStage,
         nodeStatus,
         subEngineStatus,
         reviewDecision,
       }),
-    [view, activeStage, nodeStatus, subEngineStatus, reviewDecision],
+    [view, primaryPath, activeStage, nodeStatus, subEngineStatus, reviewDecision],
   )
 }

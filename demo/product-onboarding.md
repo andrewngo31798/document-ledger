@@ -32,7 +32,7 @@ Until approved decisions exist, the system runs in **cold start** mode: analysis
 | **Queue / Event Bus** | Yes | Pipeline events: `source.triggered` → `decision.approved` |
 | **pgvector** | Yes | Ledger embedding search for Ledger Diff Engine |
 | **Redis** | Yes | Signal Intake idempotency and job state |
-| **LLM API** | Yes (limited) | Classification fallback, forecast and recommendation synthesis |
+| **LLM API** | Yes (limited) | Classification fallback, Forecast Engine (module 09), recommendation synthesis |
 
 **Deferred at Phase 1:** Neo4j/FalkorDB, CMDB integration, Temporal workflows, GitHub dependency graphs.
 

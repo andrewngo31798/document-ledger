@@ -125,9 +125,12 @@ in dependency order IS the demo.
 
 Brief. The Analysis Engine already did the setup — this is the release valve.
 
-A reviewer opens the portal. They see the decision candidate, impact map, similar
-precedents, forecast, recommended next steps. Everything the Analysis Engine produced,
-presented for a human to act on. They can edit, add rationale, approve, or reject.
+A reviewer opens the portal. They see the decision candidate, ledger diff, impact map,
+and recommended next steps. Everything the Analysis Engine produced, presented for a
+human to act on. They can edit, add rationale, approve, or reject.
+
+*(Discussion threads skip this step — Forecast Engine publishes advisory change previews
+straight to Consumer API.)*
 
 > "Some things shouldn't be fully automated. When trust is involved, someone has to own
 > it. The portal doesn't replace that moment — it makes the person in that moment faster

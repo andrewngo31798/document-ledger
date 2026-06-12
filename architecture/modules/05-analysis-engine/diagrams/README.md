@@ -63,22 +63,22 @@ See [analysis-subengine-dag.mmd](analysis-subengine-dag.mmd).
 Phase 1 (parallel):  ledger_diff ──┐
                      impact       ──┤
                                     ▼
-Phase 2:             forecast  ← requires diff + impact
-                                    ▼
-Phase 3:             recommendation ← requires diff + impact + forecast
+Phase 2:             recommendation ← requires diff + impact
                                     ▼
                      insight_aggregator
 ```
 
+> **Forecast** is module 09 — discussion path only. See [09-forecast-engine](../../09-forecast-engine/).
+
 | Profile | Sub-engines | LLM budget (target) |
 | ------- | ----------- | ------------------- |
-| `full_analysis` | all four | 2–4 calls, ~8K output tokens |
+| `full_analysis` | diff, impact, recommendation | 2–3 calls, ~6K output tokens |
 | `standard_analysis` | diff, impact, recommendation | 1–2 calls |
 | `lightweight_analysis` | diff, recommendation | 0–1 calls |
 | `review_first` | none | 0 calls |
 
 **Hard dependency rules:**
-- `forecast` enabled → `impact` must be enabled
+- `impact` enabled → `ledger_diff` must be enabled
 - `recommendation` enabled → `ledger_diff` must be enabled
 - Violations → job rejected to DLQ
 

@@ -1,6 +1,6 @@
 # Knowledge Processing Engine — Design
 
-Module **03** in the Document Ledger pipeline. Converts raw source content into structured knowledge objects with embedded decision candidates for the Classification Engine.
+Module **03** in the Document Ledger pipeline. Converts raw source content into structured knowledge objects with embedded decision candidates **and discussion signals**, then routes to the **decision path** (Classification) or **discussion path** ([Forecast Engine](../09-forecast-engine/)).
 
 Related docs: [System Architecture](../../overview/architecture.md) · [Responsibility Matrix](../../overview/module-responsibility-matrix.md) · [Signal Intake Engine](../01-signal-intake/) · [Classification Engine](../04-classification/)
 
@@ -19,17 +19,19 @@ Knowledge Processing Engine = fetch raw content and produce structured, tenant-s
 | Normalize text | Clean encoding, strip noise, unify format |
 | Chunk content | Split into semantic segments for NLP |
 | Extract entities | People, systems, projects, dates, links |
-| Detect decision candidates | Identify decision signals in text (capability, not a separate module) |
+| Detect decision candidates | Identify closed decision signals in text |
+| Detect discussion signals | Identify debate / change language without decision closure |
+| Set routing hint | `routing.primary_path`: decision, discussion, both, or none |
 | Enrich metadata | Attach tenant, source, timestamps, content hash |
 | Persist knowledge | Store raw artifacts and structured records |
-| Publish completion | Emit `source.ingested` for Classification Engine |
+| Publish completion | Emit `source.ingested` for Classification **or** Forecast Engine |
 
 ### Scope boundaries
 
 | In scope | Out of scope |
 | -------- | -------------- |
 | Fetching and normalizing source content | Business / technical classification |
-| Entity and decision-candidate extraction | Ledger diff, impact, forecast analysis |
+| Entity, decision-candidate, and discussion-signal extraction | Classification, Analysis, or Forecast processing |
 | Structured knowledge persistence | Human review and approval |
 | Publishing `source.ingested` | Writing to Decision Ledger |
 
@@ -62,8 +64,9 @@ Queue / Event Bus
    (structured records)    (raw content blobs)
           │
           ▼
-   Queue / Event Bus ──► Classification Engine
-     source.ingested
+   Queue / Event Bus ──► Classification Engine (decision path)
+     source.ingested          Forecast Engine (discussion path)
+                              change.preview.ready
 ```
 
 ### Processing chain (sequential)

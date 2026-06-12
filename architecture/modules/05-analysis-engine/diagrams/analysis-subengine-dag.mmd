@@ -1,11 +1,11 @@
 flowchart LR
-    subgraph trigger [Trigger]
+    subgraph trigger [Trigger — decision path only]
         evt["decision.classified<br/>+ routing.sub_engines"]
     end
 
     subgraph profiles [Analysis profiles]
-        full["full_analysis<br/>all 4 sub-engines"]
-        std["standard_analysis<br/>skip forecast"]
+        full["full_analysis<br/>all 3 sub-engines"]
+        std["standard_analysis<br/>diff + impact + recommendation"]
         light["lightweight_analysis<br/>diff + recommendation"]
         rf["review_first<br/>skip all sub-engines"]
     end
@@ -14,32 +14,30 @@ flowchart LR
         direction TB
         p1a[ledger_diff]
         p1b[impact]
-        p2[forecast]
-        p3[recommendation]
+        p2[recommendation]
         agg[insight_aggregator]
 
         p1a --> p2
         p1b --> p2
-        p1a --> p3
-        p1b --> p3
-        p2 --> p3
         p1a --> agg
         p1b --> agg
         p2 --> agg
-        p3 --> agg
     end
 
     subgraph deps [Dependency rules]
-        d1["forecast requires impact"]
-        d2["recommendation requires ledger_diff"]
+        d1["recommendation requires ledger_diff"]
+        d2["impact optional per profile"]
         d3["violation → DLQ + audit error"]
     end
 
     subgraph outputs [Sub-engine outputs]
-        o1["ledger_diff<br/>headline, change_classification, changes[]"]
-        o2["impact_map<br/>blast_radius_score, affected_systems"]
-        o3["forecast_report<br/>predicted_outcomes[], confidence_band"]
-        o4["recommendations[]<br/>type, priority, ledger_action"]
+        o1["ledger_diff"]
+        o2["impact_map"]
+        o3["recommendations[]"]
+    end
+
+    subgraph note [Forecast Engine]
+        n1["Module 09 — discussion path only<br/>NOT part of Analysis DAG"]
     end
 
     evt --> profiles
@@ -48,5 +46,4 @@ flowchart LR
     p1a -.-> o1
     p1b -.-> o2
     p2 -.-> o3
-    p3 -.-> o4
     agg --> pkg["insight_package"]

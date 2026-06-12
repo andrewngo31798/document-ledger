@@ -1,4 +1,4 @@
-export type NodeStatus = 'idle' | 'processing' | 'complete' | 'error' | 'rejected'
+export type NodeStatus = 'idle' | 'processing' | 'complete' | 'error' | 'rejected' | 'skipped'
 
 export type PipelineStage =
   | 'input'
@@ -6,6 +6,7 @@ export type PipelineStage =
   | 'event-bus'
   | 'knowledge-processing'
   | 'classification'
+  | 'forecast-engine'
   | 'analysis-engine'
   | 'review-portal'
   | 'decision-ledger'
@@ -13,13 +14,18 @@ export type PipelineStage =
 
 export type InputType = 'transcript' | 'confluence'
 
+/** Routing after Knowledge Processing — decision candidates vs discussion signals */
+export type PrimaryPath = 'decision' | 'discussion'
+
 export type AnalysisProfile =
   | 'full_analysis'
   | 'standard_analysis'
   | 'lightweight_analysis'
   | 'review_first'
 
-export type SubEngineKey = 'ledger_diff' | 'impact' | 'forecast' | 'recommendation'
+export type SubEngineKey = 'ledger_diff' | 'impact' | 'recommendation'
+
+export type ForecastSubEngineKey = 'change_detector' | 'precedent_engine' | 'forward_projector'
 
 export interface RunConfig {
   inputType: InputType
@@ -90,6 +96,15 @@ export interface AffectedSystem {
   evidence?: string
 }
 
+export interface PredictedOutcome {
+  outcome: string
+  likelihood: 'unlikely' | 'possible' | 'likely' | 'very_likely'
+  time_horizon: string
+  risk_type?: string
+  mitigation_hint?: string
+  grounded_in?: string[]
+}
+
 export interface ImpactResult {
   summary: string
   blast_radius_score: number
@@ -100,22 +115,6 @@ export interface ImpactResult {
     delivery: number
     people: number
   }
-}
-
-export interface PredictedOutcome {
-  outcome: string
-  likelihood: 'unlikely' | 'possible' | 'likely' | 'very_likely'
-  time_horizon: string
-  risk_type?: string
-  mitigation_hint?: string
-  grounded_in?: string[]
-}
-
-export interface ForecastResult {
-  summary: string
-  confidence_band: 'low' | 'medium' | 'high'
-  predicted_outcomes: PredictedOutcome[]
-  rollback_considerations?: string
 }
 
 export type RecommendationType =
@@ -154,7 +153,6 @@ export interface InsightPackage {
   decision_summary: DecisionSummary
   ledger_diff: LedgerDiffResult
   impact_map?: ImpactResult
-  forecast_report?: ForecastResult
   recommendations?: Recommendation[]
   provenance: {
     sub_engines_run: SubEngineKey[]
@@ -184,9 +182,62 @@ export interface SignalIntakeOutput {
 
 export interface KnowledgeProcessingOutput {
   knowledge_id: string
+  knowledge_kind: 'decision_candidate' | 'discussion' | 'informational'
   decision_candidate_count: number
+  discussion_signal: boolean
   entities_extracted: string[]
-  decision_signal: string
+  decision_signal?: string
+  routing: { primary_path: PrimaryPath }
+}
+
+export interface DetectedShift {
+  shift_type: string
+  description: string
+  direction: 'emerging' | 'reversing' | 'stable'
+  confidence: number
+  evidence_span?: string
+  baseline_hint?: string
+}
+
+export interface PrecedentMatch {
+  ledger_record_id: string
+  title: string
+  relationship: string
+  similarity_score: number
+  approved_at?: string
+  what_happened: string
+  evidence_refs?: string[]
+}
+
+export interface ForwardSignals {
+  summary: string
+  confidence_band: 'low' | 'medium' | 'high'
+  predicted_outcomes: PredictedOutcome[]
+}
+
+/** Forecast Engine (module 09) output — discussion path */
+export interface ChangePreview {
+  change_preview_id: string
+  knowledge_id: string
+  tenant_id: string
+  source_type: string
+  knowledge_kind: 'discussion'
+  change_summary: string
+  seen_before_headline: string
+  detected_shifts: DetectedShift[]
+  precedent_matches: PrecedentMatch[]
+  forward_signals?: ForwardSignals
+  provenance: {
+    engines_run: ForecastSubEngineKey[]
+    retrieval_queries?: number
+    llm_calls?: number
+    duration_ms: number
+  }
+  quality: {
+    grounding_score: number
+    novelty_score?: number
+    alert_priority?: 'low' | 'normal' | 'high'
+  }
 }
 
 export interface ClassificationOutput {
@@ -216,13 +267,20 @@ export interface LedgerEntry {
   evidence_links: string[]
 }
 
+export interface ConsumerApiOutput {
+  prompt: string
+  answer: string
+  source_ledger_id: string
+}
+
 export interface PipelineStageResult {
   'signal-intake'?: SignalIntakeOutput
   'event-bus'?: { event_type: string; routing: string }
   'knowledge-processing'?: KnowledgeProcessingOutput
   classification?: ClassificationOutput
+  'forecast-engine'?: ChangePreview
   'analysis-engine'?: InsightPackage
   'review-portal'?: { approved: boolean; rationale: string; reviewer: string }
   'decision-ledger'?: LedgerEntry
-  'consumer-api'?: { query: string; answer: string; source_ledger_id: string }
+  'consumer-api'?: ConsumerApiOutput
 }

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "document-ledger/events/source.ingested",
   "title": "source.ingested",
-  "description": "Event published by Knowledge Processing Engine when structured knowledge is ready for classification.",
+  "description": "Event published by Knowledge Processing Engine when structured knowledge is ready. Routed to Classification (decision path) or Forecast Engine (discussion path) via routing.primary_path.",
   "type": "object",
   "required": [
     "event_type",
@@ -39,12 +39,29 @@
         },
         "summary": {
           "type": "object",
-          "required": ["chunk_count", "entity_count", "decision_candidate_count"],
+          "required": ["chunk_count", "entity_count", "decision_candidate_count", "knowledge_kind"],
           "properties": {
             "title": { "type": "string" },
             "chunk_count": { "type": "integer", "minimum": 0 },
             "entity_count": { "type": "integer", "minimum": 0 },
-            "decision_candidate_count": { "type": "integer", "minimum": 0 }
+            "decision_candidate_count": { "type": "integer", "minimum": 0 },
+            "discussion_signal": { "type": "boolean", "description": "True when content shows debate/change without decision closure" },
+            "knowledge_kind": {
+              "type": "string",
+              "enum": ["decision", "discussion", "mixed", "informational"],
+              "description": "Primary content classification for downstream routing"
+            }
+          }
+        },
+        "routing": {
+          "type": "object",
+          "required": ["primary_path"],
+          "properties": {
+            "primary_path": {
+              "type": "string",
+              "enum": ["decision", "discussion", "none", "both"],
+              "description": "decision → Classification; discussion → Forecast Engine; both → parallel jobs"
+            }
           }
         },
         "processing": {

@@ -1,9 +1,9 @@
 flowchart TB
-    subgraph input [Input]
-        queueIn["Queue / Event Bus<br/>decision.classified"]
+    subgraph input [Input — decision.classified only]
+        queueIn["Queue / Event Bus"]
         knowledgeStore[(Knowledge Store)]
         classStore[(classified_decisions)]
-        ledgerStore[(Decision Ledger<br/>read-only — diff baseline)]
+        ledgerStore[(Decision Ledger)]
         graphStore[(Decision Knowledge Graph)]
         vectorStore[(Vector DB)]
     end
@@ -15,15 +15,11 @@ flowchart TB
         router[Profile Router]
 
         subgraph phase1 [Phase 1 — Parallel]
-            ledgerDiff["Ledger Diff Engine<br/>primary: what changed vs ledger"]
+            ledgerDiff[Ledger Diff Engine]
             impact[Impact Engine]
         end
 
         subgraph phase2 [Phase 2]
-            forecast[Forecast Engine]
-        end
-
-        subgraph phase3 [Phase 3]
             recommend[Recommendation Engine]
         end
 
@@ -36,8 +32,8 @@ flowchart TB
 
     subgraph output [Output]
         insightStore[(insight_packages)]
-        queueOut["Queue / Event Bus<br/>insight.ready"]
-        review[Review & Approval Portal]
+        queueOut["insight.ready"]
+        review[Review Portal]
     end
 
     queueIn --> consumer
@@ -53,17 +49,11 @@ flowchart TB
     vectorStore --> ledgerDiff
     ledgerStore --> ledgerDiff
 
-    ledgerDiff --> forecast
-    impact --> forecast
-    loader --> forecast
-
     ledgerDiff --> recommend
     impact --> recommend
-    forecast --> recommend
 
     ledgerDiff --> aggregator
     impact --> aggregator
-    forecast --> aggregator
     recommend --> aggregator
 
     aggregator --> quality

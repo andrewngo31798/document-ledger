@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "document-ledger/schemas/change-preview",
+  "title": "ChangePreview",
+  "description": "Forecast Engine output for discussion / non-decision knowledge. Answers what is changing and whether the organization has seen this before.",
+  "type": "object",
+  "required": [
+    "change_preview_id",
+    "knowledge_id",
+    "tenant_id",
+    "knowledge_kind",
+    "change_summary",
+    "detected_shifts",
+    "precedent_matches",
+    "provenance",
+    "quality"
+  ],
+  "properties": {
+    "change_preview_id": { "type": "string", "format": "uuid" },
+    "knowledge_id": { "type": "string", "format": "uuid" },
+    "tenant_id": { "type": "string" },
+    "source_type": { "type": "string" },
+    "knowledge_kind": {
+      "type": "string",
+      "enum": ["discussion", "mixed"],
+      "description": "Pure discussion or mixed (debate + weak decision signals)"
+    },
+    "change_summary": {
+      "type": "string",
+      "description": "One-sentence headline: what appears to be changing in this discussion"
+    },
+    "detected_shifts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["shift_type", "description", "direction", "confidence"],
+        "properties": {
+          "shift_type": {
+            "type": "string",
+            "enum": ["scope", "technology", "constraint", "timeline", "position", "ownership", "other"]
+          },
+          "description": { "type": "string" },
+          "direction": { "type": "string", "enum": ["emerging", "reversing", "unclear"] },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "evidence_span": { "type": "string" },
+          "baseline_hint": { "type": "string", "description": "What this shift is relative to, if known" }
+        }
+      }
+    },
+    "precedent_matches": {
+      "type": "array",
+      "description": "Have we seen this before — grounded in approved Decision Ledger records",
+      "items": {
+        "type": "object",
+        "required": ["ledger_record_id", "title", "relationship", "similarity_score"],
+        "properties": {
+          "ledger_record_id": { "type": "string" },
+          "title": { "type": "string" },
+          "relationship": {
+            "type": "string",
+            "enum": ["similar_debate", "prior_decision", "related_adr", "same_scope", "same_technology"]
+          },
+          "similarity_score": { "type": "number", "minimum": 0, "maximum": 1 },
+          "approved_at": { "type": "string", "format": "date-time" },
+          "what_happened": { "type": "string", "description": "Outcome summary from ledger metadata" },
+          "evidence_refs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "seen_before_headline": {
+      "type": "string",
+      "description": "Plain-language answer to 'have we seen this before?'"
+    },
+    "forward_signals": {
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string" },
+        "confidence_band": { "type": "string", "enum": ["low", "medium", "high"] },
+        "predicted_outcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["outcome", "likelihood", "time_horizon"],
+            "properties": {
+              "outcome": { "type": "string" },
+              "likelihood": { "type": "string", "enum": ["unlikely", "possible", "likely", "very_likely"] },
+              "time_horizon": { "type": "string" },
+              "grounded_in": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["engines_run", "duration_ms"],
+      "properties": {
+        "engines_run": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["change_detector", "precedent_engine", "forward_projector"] }
+        },
+        "retrieval_queries": { "type": "integer" },
+        "llm_calls": { "type": "integer" },
+        "duration_ms": { "type": "integer" }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": ["grounding_score"],
+      "properties": {
+        "grounding_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "novelty_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "alert_priority": { "type": "string", "enum": ["low", "normal", "high"] },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

@@ -76,25 +76,6 @@ export const insightPackageMock: InsightPackage = {
       people: 0.2,
     },
   },
-  forecast_report: {
-    summary:
-      'Low operational risk given existing Postgres expertise. Scale ceiling expected beyond 18 months.',
-    confidence_band: 'high',
-    predicted_outcomes: [
-      {
-        outcome: 'Relational audit queries perform within SLA at projected volume.',
-        likelihood: 'very_likely',
-        time_horizon: '0–18 months',
-        grounded_in: ['impact_map.affected_systems', 'classification.categories'],
-      },
-      {
-        outcome: 'Partitioning required if ledger volume exceeds 18-month projections.',
-        likelihood: 'possible',
-        time_horizon: '18+ months',
-        mitigation_hint: 'Schedule scale review at 12 months',
-      },
-    ],
-  },
   recommendations: [
     {
       id: 'rec-001',
@@ -119,8 +100,8 @@ export const insightPackageMock: InsightPackage = {
     },
   ],
   provenance: {
-    sub_engines_run: ['ledger_diff', 'impact', 'forecast', 'recommendation'],
-    model_versions: { forecast: 'gpt-4.1-mini', recommendation: 'gpt-4.1-mini' },
+    sub_engines_run: ['ledger_diff', 'impact', 'recommendation'],
+    model_versions: { recommendation: 'gpt-4.1-mini' },
     duration_ms: 4800,
     graph_queries: 12,
     retrieval_queries: 3,

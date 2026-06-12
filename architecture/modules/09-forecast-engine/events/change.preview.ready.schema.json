@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "document-ledger/events/change.preview.ready",
+  "title": "change.preview.ready",
+  "description": "Published by Forecast Engine when a change preview for discussion knowledge is ready for Consumer API and downstream systems.",
+  "type": "object",
+  "required": ["event_type", "event_id", "occurred_at", "tenant_id", "trace_id", "payload"],
+  "properties": {
+    "event_type": { "const": "change.preview.ready" },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["change_preview_id", "knowledge_id", "change_summary", "precedent_count", "shift_count"],
+      "properties": {
+        "change_preview_id": { "type": "string", "format": "uuid" },
+        "knowledge_id": { "type": "string", "format": "uuid" },
+        "change_summary": { "type": "string" },
+        "seen_before_headline": { "type": "string" },
+        "precedent_count": { "type": "integer", "minimum": 0 },
+        "shift_count": { "type": "integer", "minimum": 0 },
+        "alert_priority": { "type": "string", "enum": ["low", "normal", "high"] },
+        "grounding_score": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}

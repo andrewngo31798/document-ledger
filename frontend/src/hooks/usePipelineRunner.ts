@@ -1,14 +1,35 @@
 import { useCallback } from 'react'
-import { usePipelineStore } from '../store/pipeline.store'
+import { usePipelineStore, type SubEngineStatus } from '../store/pipeline.store'
 import { pipelineService } from '../services/pipeline.service'
+import { insightPackageMock } from '../data/insight-package-mock'
+import { changePreviewMock } from '../data/change-preview-mock'
+import type { PipelineStage } from '../types/pipeline'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const DECISION_SKIP_STAGES: PipelineStage[] = [
+  'classification',
+  'analysis-engine',
+  'review-portal',
+  'decision-ledger',
+]
+
+const DISCUSSION_SKIP_STAGES: PipelineStage[] = ['forecast-engine']
+
+function markSkipped(
+  store: ReturnType<typeof usePipelineStore.getState>,
+  stages: PipelineStage[],
+) {
+  for (const stage of stages) {
+    store.setNodeStatus(stage, 'skipped')
+  }
+}
 
 export function usePipelineRunner() {
   const store = usePipelineStore()
 
   const advanceStage = useCallback(async () => {
-    const { activeStage, runConfig, stageOutputs } = usePipelineStore.getState()
+    const { activeStage, runConfig, stageOutputs, primaryPath } = usePipelineStore.getState()
     if (!activeStage || !runConfig) return
 
     store.setNodeStatus(activeStage, 'processing')
@@ -32,10 +53,17 @@ export function usePipelineRunner() {
         }
         case 'knowledge-processing': {
           const si = stageOutputs['signal-intake'] as { payload_ref: string } | undefined
-          const out = await pipelineService.runKnowledgeProcessing(si?.payload_ref ?? '')
+          const out = await pipelineService.runKnowledgeProcessing(si?.payload_ref ?? '', runConfig)
           store.setStageOutput('knowledge-processing', out)
           store.setNodeStatus('knowledge-processing', 'complete')
-          store.setActiveStage('classification')
+
+          if (primaryPath === 'discussion') {
+            markSkipped(store, [...DECISION_SKIP_STAGES])
+            store.setActiveStage('forecast-engine')
+          } else {
+            markSkipped(store, [...DISCUSSION_SKIP_STAGES])
+            store.setActiveStage('classification')
+          }
           break
         }
         case 'classification': {
@@ -46,44 +74,55 @@ export function usePipelineRunner() {
           store.setActiveStage('analysis-engine')
           break
         }
+        case 'forecast-engine': {
+          const kp = stageOutputs['knowledge-processing'] as { knowledge_id: string } | undefined
+          store.setDetailPanelFocus({ stage: 'forecast-engine' })
+          store.setStageOutput('forecast-engine', changePreviewMock)
+          const out = await pipelineService.runForecastEngine(kp?.knowledge_id ?? '')
+          store.setStageOutput('forecast-engine', out)
+          store.setNodeStatus('forecast-engine', 'complete')
+          store.setActiveStage('consumer-api')
+          break
+        }
         case 'analysis-engine': {
           store.setAnalysisExpanded(true)
           const cls = stageOutputs['classification'] as { classified_decision_id: string } | undefined
 
-          // Phase 1: Ledger Diff + Impact in parallel
+          const focusSub = (subEngine: keyof SubEngineStatus) => {
+            store.setDetailPanelFocus({ stage: 'analysis-engine', subEngine })
+          }
+
+          store.setStageOutput('analysis-engine', insightPackageMock)
+
+          focusSub('ledger-diff')
           store.setSubEngineStatus('ledger-diff', 'processing')
           store.setSubEngineStatus('impact', 'processing')
-          await Promise.all([
-            delay(1200).then(() => store.setSubEngineStatus('ledger-diff', 'complete')),
-            delay(1500).then(() => store.setSubEngineStatus('impact', 'complete')),
-          ])
+          await delay(1200)
+          store.setSubEngineStatus('ledger-diff', 'complete')
+          focusSub('impact')
+          await delay(300)
+          store.setSubEngineStatus('impact', 'complete')
 
-          // Phase 2: Forecast
-          store.setSubEngineStatus('forecast', 'processing')
-          await delay(1100)
-          store.setSubEngineStatus('forecast', 'complete')
-
-          // Phase 3: Recommendation
+          focusSub('recommendation')
           store.setSubEngineStatus('recommendation', 'processing')
-          await delay(900)
+          await delay(1100)
           store.setSubEngineStatus('recommendation', 'complete')
 
-          // Aggregator
+          focusSub('aggregator')
           store.setSubEngineStatus('aggregator', 'processing')
           const out = await pipelineService.runAnalysisEngine(cls?.classified_decision_id ?? '')
           store.setSubEngineStatus('aggregator', 'complete')
 
           store.setStageOutput('analysis-engine', out)
           store.setNodeStatus('analysis-engine', 'complete')
+          store.setDetailPanelFocus({ stage: 'analysis-engine' })
 
-          // Brief pause before zooming back out
           await delay(1200)
           store.setAnalysisExpanded(false)
           store.setActiveStage('review-portal')
           break
         }
         case 'review-portal': {
-          // Review portal is interactive — user clicks Approve/Reject, handled separately
           break
         }
         case 'decision-ledger': {
@@ -100,7 +139,11 @@ export function usePipelineRunner() {
         }
         case 'consumer-api': {
           const ledger = stageOutputs['decision-ledger'] as { id: string } | undefined
-          const out = await pipelineService.runConsumerApi(ledger?.id ?? '')
+          const changePreview = stageOutputs['forecast-engine'] as { change_preview_id: string } | undefined
+          const out = await pipelineService.runConsumerApi(
+            ledger?.id ?? '',
+            changePreview?.change_preview_id,
+          )
           store.setStageOutput('consumer-api', out)
           store.setNodeStatus('consumer-api', 'complete')
           store.setActiveStage(null)

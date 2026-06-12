@@ -1,5 +1,5 @@
 C4Component
-    title Component Diagram — Analysis Engine
+    title Component Diagram — Analysis Engine (Decision Path)
 
     Container_Ext(classification, "Classification Engine", "Worker service", "Produces classified decisions")
     Container_Ext(reviewPortal, "Review & Approval Portal", "Web application", "Consumes insight packages")
@@ -7,12 +7,11 @@ C4Component
     Container_Ext(ledger, "Decision Ledger", "Backend service", "Historical approved decisions")
 
     Container_Boundary(analysisBoundary, "Analysis Engine") {
-        Component(jobConsumer, "Job Consumer", "Worker handler", "Consumes decision.classified events from Queue / Event Bus")
-        Component(ledgerDiffEngine, "Ledger Diff Engine", "Analysis sub-engine", "Diff candidate vs approved ledger; structured field deltas")
-        Component(impactEngine, "Impact Engine", "Analysis sub-engine", "Dependency analysis and graph traversal")
-        Component(forecastEngine, "Forecast Engine", "Analysis sub-engine", "Pattern analysis and risk prediction")
-        Component(recommendationEngine, "Recommendation Engine", "Analysis sub-engine", "Reasoning, rules, and LLM recommendations")
-        Component(insightAggregator, "Insight Aggregator", "Orchestrator", "Merges sub-engine outputs into an insight package")
+        Component(jobConsumer, "Job Consumer", "Worker handler", "Consumes decision.classified events")
+        Component(ledgerDiffEngine, "Ledger Diff Engine", "Sub-engine", "Diff candidate vs approved ledger")
+        Component(impactEngine, "Impact Engine", "Sub-engine", "Graph traversal and blast radius")
+        Component(recommendationEngine, "Recommendation Engine", "Sub-engine", "Rules and LLM recommendations")
+        Component(insightAggregator, "Insight Aggregator", "Orchestrator", "Merges sub-engine outputs")
         Component(eventPublisher, "Event Publisher", "Publisher", "Publishes insight.ready events")
     }
 
@@ -21,16 +20,11 @@ C4Component
     Rel(jobConsumer, impactEngine, "Invokes")
     Rel(ledgerDiffEngine, vectorDb, "Queries embeddings")
     Rel(ledgerDiffEngine, ledger, "Reads approved decisions for diff")
-    Rel(impactEngine, forecastEngine, "Provides impact map")
-    Rel(ledgerDiffEngine, forecastEngine, "Provides ledger diff")
-    Rel(jobConsumer, forecastEngine, "Invokes")
     Rel(impactEngine, recommendationEngine, "Provides impact map")
     Rel(ledgerDiffEngine, recommendationEngine, "Provides ledger diff")
-    Rel(forecastEngine, recommendationEngine, "Provides forecast report")
     Rel(jobConsumer, recommendationEngine, "Invokes")
     Rel(ledgerDiffEngine, insightAggregator, "Contributes ledger_diff")
-    Rel(impactEngine, insightAggregator, "Contributes impact map")
-    Rel(forecastEngine, insightAggregator, "Contributes forecast report")
+    Rel(impactEngine, insightAggregator, "Contributes impact_map")
     Rel(recommendationEngine, insightAggregator, "Contributes recommendations")
     Rel(insightAggregator, eventPublisher, "Hands off insight package")
     Rel(eventPublisher, reviewPortal, "Publishes insight.ready", "async")

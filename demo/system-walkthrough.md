@@ -2,7 +2,12 @@
 
 Talking points for explaining each module during the demo video. Each section follows the same structure so you can walk through the pipeline in order.
 
-**Pipeline flow:** Signal Intake → Event Bus → Knowledge Processing → Classification → Analysis → Review & Approval → Decision Ledger → Consumer API
+**Dual-path pipeline:**
+
+| Path | Trigger | Flow |
+| ---- | ------- | ---- |
+| **Decision** | `decision_candidate_count ≥ 1` | Signal Intake → Event Bus → Knowledge Processing → Classification → Analysis → Review → Decision Ledger → Consumer API |
+| **Discussion** | `discussion_signal = true`, no decision | Signal Intake → Event Bus → Knowledge Processing → **Forecast Engine** → Consumer API |
 
 ---
 
@@ -42,12 +47,12 @@ Something has to decide *when* the pipeline runs and *who* is responsible for st
 
 ### Example triggers
 
-| Source | Trigger |
-| ------ | ------- |
-| Jira | A new ticket is created |
-| Meetings | A transcript is uploaded |
-| Confluence | A page is updated |
-| Manual | A user clicks **Analyze Document** |
+| Source | Trigger | Typical path |
+| ------ | ------- | ------------ |
+| Jira | A new ticket is created | Decision |
+| Meetings | A transcript is uploaded | Decision |
+| Confluence | A page is updated | Discussion |
+| Manual | A user clicks **Analyze Document** | Either |
 
 ### Output
 
@@ -63,16 +68,14 @@ The Event Bus is the nervous system of Document Ledger. It moves events between 
 
 ### Why
 
-Document Ledger is a multi-stage pipeline. Decision processing is not instantaneous — it may involve AI analysis, human review, and future integrations. The Event Bus keeps the overall process reliable while letting every stage work independently.
-
-Without it, a slow or failing stage would block everything upstream and downstream.
+Document Ledger is a multi-stage pipeline. Processing is not instantaneous — it may involve AI analysis, human review, and future integrations. The Event Bus keeps the overall process reliable while letting every stage work independently.
 
 ### What it does
 
 - Buffers and routes job messages between modules
 - Enables async processing and horizontal scaling
 - Retries failed work and isolates dead-letter cases
-- Preserves a traceable flow from signal to ledger
+- Preserves a traceable flow from signal to ledger or change preview
 
 ### Output
 
@@ -84,34 +87,32 @@ Job messages routed to the appropriate downstream consumer (e.g. Knowledge Proce
 
 ### One-liner
 
-This is where conversations, documents, and tickets stop being raw content and start becoming organizational knowledge.
+This is where conversations, documents, and tickets stop being raw content and start becoming organizational knowledge — with routing to the **decision path** or **discussion path**.
 
 ### Why
 
-Organizational knowledge is buried inside unstructured content. A 20-page meeting transcript or a Jira ticket with 300 comments cannot go straight into the Decision Ledger.
-
-The system must first understand:
-
-- What is being discussed?
-- Was a decision made?
-- What was the rationale?
-- Who decided?
-- What is affected?
+Organizational knowledge is buried inside unstructured content. The system must first understand what is being discussed, whether a decision was made, and whether the content is a shifting discussion worth tracking before any analysis runs.
 
 ### What it does
 
 - Fetches and normalizes source content
 - Extracts meaningful information (entities, topics, decision signals)
-- Detects decision candidates within unstructured text
-- Produces a canonical structured knowledge object
+- Detects **decision candidates** OR **discussion signals**
+- Sets `routing.primary_path` — `decision`, `discussion`, or `none`
+
+### Questions it answers
+
+- Was a decision made, or is this still a discussion?
+- What entities and topics are in play?
+- Which downstream path should run?
 
 ### Output
 
-Structured knowledge + `source.ingested` event → **Classification Engine**
+Structured knowledge + `source.ingested` event → **Classification Engine** (decision) or **Forecast Engine** (discussion)
 
 ---
 
-## 4. Classification Engine
+## 4. Classification Engine *(decision path only)*
 
 ### One-liner
 
@@ -126,6 +127,7 @@ The system must know *what kind* of decision it is before it can analyze it. A p
 - Identifies decision type from structured knowledge
 - Applies taxonomy tags from the organization's decision taxonomy
 - Scores confidence so downstream stages know how reliable the classification is
+- Routes to Analysis Engine with enabled sub-engines: ledger diff, impact, recommendation
 
 ### Output
 
@@ -133,11 +135,42 @@ Classified decision + `decision.classified` event → **Analysis Engine**
 
 ---
 
-## 5. Analysis Engine
+## 5. Forecast Engine *(discussion path only — Module 09)*
 
 ### One-liner
 
-The Analysis Engine is the intelligence layer. It compares a new decision against the organization's approved knowledge, explains what changed, evaluates impact, forecasts outcomes, and prepares a complete insight package for human review.
+The Forecast Engine captures **change** in ongoing discussions and answers **"have we seen this before?"** — without requiring a closed decision.
+
+### Why
+
+Most organizational content is not a decision candidate. Confluence threads, design debates, and early-position language still matter. Teams lose track of shifts until someone asks "didn't we already decide this?" Forecast Engine surfaces change early, grounded in the Decision Ledger.
+
+### Questions it answers
+
+| Question | Answered by |
+| -------- | ----------- |
+| What's shifting in this thread? | Change Detector |
+| Have we seen this before? | Precedent Engine |
+| What might happen next? | Forward Projector (optional) |
+
+### What it does
+
+- **Change Detector** — detects emerging, reversing, or stable shifts vs baseline
+- **Precedent Engine** — hybrid retrieval against approved ledger records
+- **Forward Projector** — optional grounded forward signals from precedent only
+- Publishes advisory `change_preview` — not approved organizational truth
+
+### Output
+
+**Change Preview** + `change.preview.ready` event → **Consumer API**
+
+---
+
+## 6. Analysis Engine *(decision path only)*
+
+### One-liner
+
+The Analysis Engine is the intelligence layer for **decisions**. It compares a new decision against approved knowledge, explains what changed, evaluates impact, and prepares a complete insight package for human review.
 
 ### Why
 
@@ -149,16 +182,16 @@ A decision only has meaning when compared to the organization's current state. R
 | -------- | ----------- |
 | What changed? | Ledger Diff Engine |
 | What is affected? | Impact Engine |
-| What are the risks? | Forecast Engine |
 | What should we do next? | Recommendation Engine |
 
 ### What it does
 
 - **Ledger Diff** — Determines what changed vs. the approved Decision Ledger
 - **Impact** — Maps dependencies and affected areas
-- **Forecast** — Predicts outcomes and surfaces warnings for the reviewer
 - **Recommendation** — Suggests next actions and governance steps
-- Orchestrates sub-engines into a single review-ready package
+- Orchestrates three sub-engines into a single review-ready package
+
+> Forecast is **not** part of Analysis. Discussion change capture lives in [Forecast Engine (Module 09)](../architecture/modules/09-forecast-engine/README.md).
 
 ### Output
 
@@ -166,7 +199,7 @@ A decision only has meaning when compared to the organization's current state. R
 
 ---
 
-## 6. Review & Approval Portal
+## 7. Review & Approval Portal *(decision path only)*
 
 ### One-liner
 
@@ -174,22 +207,13 @@ The Review & Approval Portal is the trust boundary. It ensures AI-generated insi
 
 ### Why
 
-AI can propose decisions, but only humans can establish organizational truth.
-
-Document Ledger does **not** automatically write everything into the ledger. If it did:
-
-- Hallucinations would enter the ledger
-- Errors would be stored permanently
-- AI would become the source of truth
-
-That is the opposite of what this system is designed for. Every decision is validated by a human before it becomes trusted knowledge.
+AI can propose decisions, but only humans can establish organizational truth. Document Ledger does **not** automatically write everything into the ledger.
 
 ### What it does
 
 - Presents the full Insight Package from the Analysis Engine
 - Enables human review, edit, and rationale capture
 - Approves or rejects the proposed change
-- Decides whether the change becomes organizational truth
 
 ### Output
 
@@ -197,7 +221,7 @@ Approved or rejected decision + `decision.approved` event → **Decision Ledger*
 
 ---
 
-## 7. Decision Ledger
+## 8. Decision Ledger *(decision path only)*
 
 ### One-liner
 
@@ -205,7 +229,7 @@ The Decision Ledger is the trusted memory of the organization. It preserves appr
 
 ### Why
 
-Organizations need a trusted foundation that both humans and AI can rely on. Without a single approved record of decisions — with evidence, versioning, and audit trail — every downstream system would be guessing.
+Organizations need a single approved record of decisions — with evidence, versioning, and audit trail. The Forecast Engine's Precedent Engine retrieves from here; Consumer API serves authoritative answers from here.
 
 ### What it does
 
@@ -220,60 +244,68 @@ Ledger records → **Consumer API**
 
 ---
 
-## 8. Consumer API
+## 9. Consumer API
 
 ### One-liner
 
-This is where Document Ledger becomes useful beyond the portal — every approved decision can power search, dashboards, agents, and future AI systems through a trusted API.
+This is where Document Ledger becomes useful beyond the portal — approved decisions and advisory change previews power search, dashboards, agents, and future AI systems through a trusted API.
 
 ### Why
 
-Trusted knowledge has no value if downstream systems cannot safely consume it. The Consumer API is the controlled exit: same truth, different formats for different consumers.
+Trusted knowledge has no value if downstream systems cannot safely consume it. The Consumer API is the controlled exit with two trust tiers: **authoritative** (ledger) and **advisory** (change previews).
 
 ### What it does
 
-| Capability | Serves |
-| ---------- | ------ |
-| Expose trusted decisions | Any authorized downstream system |
-| System-ready data | Dashboards, reporting, search UI, internal tools |
-| AI-ready context | Agents, copilots, RAG systems |
-| Protect access | Auth, tenancy, and policy enforcement |
+| Capability | Source | Trust tier |
+| ---------- | ------ | ---------- |
+| Search / retrieve decisions | Decision Ledger | Authoritative |
+| RAG context for agents | Decision Ledger | Authoritative |
+| Change previews | Forecast Engine | Advisory |
+| "Have we seen this before?" | Precedent query | Advisory (ledger-grounded) |
 
 ### Output
 
-Decision knowledge API responses → AI systems, search, agents, RAG, and internal tools
+Decision knowledge and change preview API responses → AI systems, search, agents, RAG, and internal tools
 
 ---
 
 ## Quick reference — event flow
 
-| Event | From | To |
-| ----- | ---- | -- |
-| `source.triggered` | Signal Intake Engine | Knowledge Processing Engine |
-| `source.ingested` | Knowledge Processing Engine | Classification Engine |
-| `decision.classified` | Classification Engine | Analysis Engine |
-| `insight.ready` | Analysis Engine | Review & Approval Portal |
-| `decision.approved` | Review & Approval Portal | Decision Ledger |
+| Event | From | To | Path |
+| ----- | ---- | -- | ---- |
+| `source.triggered` | Signal Intake Engine | Knowledge Processing Engine | Both |
+| `source.ingested` | Knowledge Processing Engine | Classification Engine | Decision |
+| `source.ingested` | Knowledge Processing Engine | Forecast Engine | Discussion |
+| `decision.classified` | Classification Engine | Analysis Engine | Decision |
+| `insight.ready` | Analysis Engine | Review & Approval Portal | Decision |
+| `decision.approved` | Review & Approval Portal | Decision Ledger | Decision |
+| `change.preview.ready` | Forecast Engine | Consumer API | Discussion |
 
 ---
 
-## Suggested demo narrative (60–90 seconds per module)
+## Suggested demo narratives
 
-1. **Start with the problem** — Decisions are scattered across Jira, Confluence, meetings, and chat. Nothing is connected; nothing is trusted at scale.
-2. **Signal Intake** — Show a trigger (e.g. Jira ticket or uploaded transcript). Emphasize: we know *when* and *who*.
-3. **Event Bus** — One sentence: async, reliable, each stage independent.
-4. **Knowledge Processing** — Raw content → structured knowledge. Mention decision candidate detection.
-5. **Classification** — Taxonomy tags and confidence score.
-6. **Analysis Engine** — The “wow” moment: diff, impact, forecast, recommendations in the Insight Package.
-7. **Review Portal** — Human in the loop. Approve or reject. This is the trust boundary.
-8. **Decision Ledger** — Approved truth, versioned and traceable.
-9. **Consumer API** — Same truth powers dashboards and AI agents.
+### Decision path (meeting transcript — ~8 minutes)
+
+1. **Problem** — Decisions scattered across Jira, Confluence, meetings.
+2. **Signal Intake** — Transcript upload; we know *when* and *who*.
+3. **Knowledge Processing** — Decision candidate detected → decision path.
+4. **Classification** — Taxonomy + confidence.
+5. **Analysis** — Ledger diff, impact, recommendations (3 sub-engines).
+6. **Review Portal** — Human trust boundary.
+7. **Decision Ledger** — Approved truth.
+8. **Consumer API** — Verified answer with evidence.
+
+### Discussion path (Confluence page — ~5 minutes)
+
+1. **Signal Intake** — Confluence page updated.
+2. **Knowledge Processing** — Discussion signal, no decision candidate → discussion path.
+3. **Forecast Engine** — Change detector → precedent ("seen ADR-007 before") → forward signals.
+4. **Consumer API** — Advisory precedent Q&A; not approved truth.
 
 ---
 
 ## Canonical module names
-
-Use these names consistently in the demo (see [System Architecture](../architecture/overview/architecture.md)):
 
 | # | Canonical name | Short label |
 | - | -------------- | ----------- |
@@ -285,3 +317,6 @@ Use these names consistently in the demo (see [System Architecture](../architect
 | 06 | Review & Approval Portal | Review Portal |
 | 07 | Decision Ledger | Decision Ledger |
 | 08 | Consumer API | Consumer API |
+| **09** | **Forecast Engine** | **Forecast** |
+
+See [System Architecture](../architecture/overview/architecture.md) for full dual-path design.

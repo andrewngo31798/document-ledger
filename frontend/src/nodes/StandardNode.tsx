@@ -18,10 +18,12 @@ export function StandardNode({ data }: { data: StandardNodeData }) {
   const { label, subtitle, status, lane, icon: Icon } = data
   const accent = status === 'rejected' ? 'var(--accent-rejected)' : laneAccent[lane]
   const isProcessing = status === 'processing'
+  const isSkipped = status === 'skipped'
 
   return (
     <div style={{
       position: 'relative',
+      opacity: isSkipped ? 0.35 : 1,
       // Fixed height so the node fills the lane consistently whether idle or running
       // (the status badge no longer grows the box past the swimlane border).
       height: NODE_HEIGHT,

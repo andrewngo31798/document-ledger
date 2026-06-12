@@ -5,6 +5,8 @@ import type {
   ClassificationOutput,
   InsightPackage,
   LedgerEntry,
+  ConsumerApiOutput,
+  ChangePreview,
 } from '../types/pipeline'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -33,8 +35,15 @@ export async function runEventBus(jobId: string): Promise<{ event_type: string; 
   return get(`/api/signals/${jobId}/status`)
 }
 
-export async function runKnowledgeProcessing(payloadRef: string): Promise<KnowledgeProcessingOutput> {
-  return post('/api/knowledge', { payload_ref: payloadRef })
+export async function runKnowledgeProcessing(
+  payloadRef: string,
+  config?: RunConfig,
+): Promise<KnowledgeProcessingOutput> {
+  return post('/api/knowledge', { payload_ref: payloadRef, input_type: config?.inputType })
+}
+
+export async function runForecastEngine(knowledgeId: string): Promise<ChangePreview> {
+  return post('/api/forecast', { knowledge_id: knowledgeId })
 }
 
 export async function runClassification(knowledgeId: string): Promise<ClassificationOutput> {
@@ -57,13 +66,15 @@ export async function runDecisionLedger(approvedDecision: unknown): Promise<Ledg
   return post('/api/ledger', approvedDecision)
 }
 
-export async function runConsumerApi(ledgerId: string): Promise<{
-  query: string
-  answer: string
-  source_ledger_id: string
-}> {
+export async function runConsumerApi(
+  ledgerId: string,
+  changePreviewId?: string,
+): Promise<ConsumerApiOutput> {
   return post('/api/query', {
     ledger_id: ledgerId,
-    query: 'Has our team officially verified the database decision — who approved it and what evidence backs it?',
+    change_preview_id: changePreviewId,
+    prompt: changePreviewId
+      ? 'Have we seen a shift toward PostgreSQL for ledger storage before?'
+      : 'Has our team officially verified the database decision — who approved it and what evidence backs it?',
   })
 }

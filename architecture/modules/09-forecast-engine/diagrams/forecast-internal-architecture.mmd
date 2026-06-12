@@ -1,0 +1,25 @@
+flowchart TB
+    subgraph phase1 [Phase 1 — parallel]
+        subgraph cd [Change Detector]
+            cd1[Entity + discourse seed extraction]
+            cd2[Shift classification<br/>scope · technology · position · timeline]
+            cd3[Baseline comparison<br/>recent knowledge on same source]
+            cd1 --> cd2 --> cd3
+        end
+
+        subgraph pe [Precedent Engine]
+            pe1[Embed discussion + extract seeds]
+            pe2[Hybrid retrieval<br/>vector + BM25 + entity overlap]
+            pe3[Rerank + relationship typing]
+            pe4[Outcome summary from ledger metadata]
+            pe1 --> pe2 --> pe3 --> pe4
+        end
+    end
+
+    subgraph phase2 [Phase 2 — sequential]
+        fp[Forward Projector<br/>precedent + shift grounded outcomes]
+    end
+
+    cd3 --> fp
+    pe4 --> fp
+    fp --> pkg[change_preview package]

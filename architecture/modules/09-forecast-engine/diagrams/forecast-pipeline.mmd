@@ -1,0 +1,56 @@
+flowchart TB
+    subgraph intake [Upstream]
+        kpe[Knowledge Processing Engine]
+        evt["source.ingested<br/>routing.primary_path = discussion"]
+    end
+
+    subgraph fe [Forecast Engine — Module 09]
+        consumer[Job Consumer]
+        loader[Context Loader]
+        orch[Forecast Orchestrator]
+
+        subgraph p1 [Phase 1 — parallel]
+            change[Change Detector<br/>what is shifting?]
+            precedent[Precedent Engine<br/>seen this before?]
+        end
+
+        subgraph p2 [Phase 2]
+            forward[Forward Projector<br/>grounded watch-fors]
+        end
+
+        agg[Preview Aggregator]
+        quality[Quality Scorer]
+        writer[Preview Store Writer]
+        publisher[Event Publisher]
+    end
+
+    subgraph stores [Read / Write]
+        knowledge[(knowledge_records)]
+        ledger[(Decision Ledger<br/>read-only precedents)]
+        vector[(Vector DB)]
+        previews[(change_previews)]
+    end
+
+    subgraph egress [Downstream]
+        out["change.preview.ready"]
+        api[Consumer API]
+    end
+
+    kpe --> evt
+    evt --> consumer
+    consumer --> loader
+    knowledge --> loader
+    loader --> orch
+    orch --> change
+    orch --> precedent
+    ledger --> precedent
+    vector --> precedent
+    change --> forward
+    precedent --> forward
+    forward --> agg
+    agg --> quality
+    quality --> writer
+    writer --> previews
+    writer --> publisher
+    publisher --> out
+    out --> api

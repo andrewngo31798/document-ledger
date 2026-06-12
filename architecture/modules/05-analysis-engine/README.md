@@ -1,6 +1,8 @@
 # Analysis Engine — Design
 
-Module **05** in the Document Ledger pipeline. The core intelligence layer — answers **what changes compared to the current Decision Ledger**, then produces a grounded **insight package** for human review by orchestrating four analysis sub-engines.
+Module **05** in the Document Ledger pipeline. The **decision-path** intelligence layer — answers **what changes compared to the current Decision Ledger**, then produces a grounded **insight package** for human review by orchestrating three sub-engines.
+
+> **Forecast Engine (module 09)** handles **discussions** (non-decision knowledge): change capture and "have we seen this before?" — see [../09-forecast-engine/README.md](../09-forecast-engine/README.md).
 
 Related docs: [System Architecture](../../overview/architecture.md) · [Responsibility Matrix](../../overview/module-responsibility-matrix.md) · [Classification Engine](../04-classification/) · [Review & Approval Portal](../06-review-portal/) · [Deep research](research/analysis-engine-deep-research.md) · [Architecture diagrams](diagrams/README.md)
 
@@ -20,7 +22,6 @@ Analysis Engine = explain what this decision changes vs the current ledger, then
 | Load analysis context | Fetch knowledge, entities, classification, and routing profile |
 | **Compare to ledger** | **Diff candidate against approved ledger records; classify change type and field-level deltas** |
 | Compute impact | Map technical and organizational blast radius of the *change* |
-| Forecast consequences | Predict risks and outcomes grounded in ledger precedent outcomes |
 | Recommend actions | Suggest governance steps (e.g., supersede ADR-0042, resolve conflict) |
 | Aggregate insights | Merge sub-engine outputs into one review-ready package |
 | Score quality | Rate completeness, grounding, and review priority |
@@ -30,7 +31,7 @@ Analysis Engine = explain what this decision changes vs the current ledger, then
 
 | In scope | Out of scope |
 | -------- | -------------- |
-| Ledger diff, impact, forecast, recommendation analysis | Raw content fetch or decision detection |
+| Ledger diff, impact, recommendation analysis (**decision path only**) | Raw content fetch, discussion routing, or forecast |
 | Insight package generation (ledger diff first) | Final approval or ledger write |
 | Analysis routing per Classification profile | Re-classification |
 | Grounded recommendations (proposals) | Autonomous execution of recommendations |
@@ -60,9 +61,7 @@ Queue / Event Bus
 │              │                             │              │   │
 │              └──────────────┬──────────────┘              │   │
 │                             ▼                             │   │
-│                      Phase 2: Forecast Engine             │   │
-│                             ▼                             │   │
-│                   Phase 3: Recommendation Engine          │   │
+│                   Phase 2: Recommendation Engine          │   │
 │                             ▼                             │   │
 │                   Insight Aggregator                      │   │
 │                             ▼                             │   │
@@ -87,14 +86,14 @@ Sub-engine order is a **directed acyclic graph**, not arbitrary parallel executi
 Phase 1 (parallel):  Ledger Diff Engine ──┐   ← primary: diff vs Decision Ledger
                      Impact Engine        ┘
                               │
-Phase 2 (sequential): Forecast Engine  ← requires Ledger Diff + Impact
-                              │
-Phase 3 (sequential): Recommendation Engine ← requires Ledger Diff + Impact + Forecast
+Phase 2 (sequential): Recommendation Engine ← requires Ledger Diff (+ Impact when enabled)
                               │
                      Insight Aggregator
 ```
 
-Classification Engine's `routing.sub_engines` can **skip** sub-engines per profile, but cannot violate dependencies (Forecast requires Impact when enabled; Recommendation requires all enabled upstream outputs).
+Classification Engine's `routing.sub_engines` can **skip** sub-engines per profile. Recommendation requires `ledger_diff` when enabled.
+
+**Out of scope:** discussion change capture and precedent matching → [Forecast Engine](../09-forecast-engine/).
 
 Detailed diagrams: [internal architecture](diagrams/analysis-internal-architecture.mmd) · [AI layer](diagrams/analysis-ai-layer.mmd) · [sub-engine DAG](diagrams/analysis-subengine-dag.mmd) · [grounding pipeline](diagrams/analysis-grounding-pipeline.mmd)
 
@@ -110,7 +109,6 @@ Detailed diagrams: [internal architecture](diagrams/analysis-internal-architectu
 | **Profile Router** | Resolve which sub-engines run from `routing.sub_engines` | Honors Classification routing contract |
 | **Ledger Diff Engine** | **What changed vs approved ledger** | Hybrid retrieval + structured field diff + change classification |
 | **Impact Engine** | Blast radius of the change | Graph traversal + risk scoring |
-| **Forecast Engine** | Consequence and risk forecasting | Grounded in ledger diff + impact + precedent outcomes |
 | **Recommendation Engine** | Governance and next-step proposals | Rules + LLM synthesis (e.g., supersede, resolve conflict) |
 | **Insight Aggregator** | Merge outputs into insight package schema | Validates against JSON schema |
 | **Quality Scorer** | Completeness, grounding, review priority | Drives Review Portal queue ordering |
@@ -149,7 +147,6 @@ Deep research per sub-engine: [research/analysis-engine-deep-research.md](resear
 | ---------- | ---------------- | ------------- | ------ |
 | **Ledger Diff Engine** | **What changes vs the current ledger?** | Retrieve closest ledger records → structured field diff → change classification | `ledger_diff` |
 | **Impact Engine** | What could this change affect? | Knowledge graph traversal (2–3 hops) + org mapping | `impact_map` |
-| **Forecast Engine** | What may happen if we adopt this change? | Pattern analysis from ledger precedent outcomes + risk dimensions | `forecast_report` |
 | **Recommendation Engine** | What should the team do about this delta? | Governance rules + grounded LLM synthesis | `recommendations[]` |
 
 ### Impact map `risk_dimensions` (Phase 1 scope)
@@ -181,8 +178,8 @@ Deep research per sub-engine: [research/analysis-engine-deep-research.md](resear
 
 | Profile | Sub-engines | Behavior |
 | ------- | ----------- | -------- |
-| `full_analysis` | ledger_diff, impact, forecast, recommendation | Full DAG; complete field-level diff |
-| `standard_analysis` | ledger_diff, impact, recommendation | Skip Forecast |
+| `full_analysis` | ledger_diff, impact, recommendation | Full DAG; complete field-level diff |
+| `standard_analysis` | ledger_diff, impact, recommendation | Same sub-engines; lighter impact templates |
 | `lightweight_analysis` | ledger_diff, recommendation | Ledger diff + governance only; minimal impact |
 | `review_first` | none | No automated diff; human compares to ledger manually |
 
@@ -242,7 +239,6 @@ Every insight claim must be traceable:
 | Ledger diff field | `evidence_candidate` + `evidence_ledger` spans or ledger record ID |
 | Change classification | Primary ledger reference + relationship rationale |
 | Affected system | Graph edge or entity reference from KPE |
-| Forecast outcome | `grounded_in[]` references to ledger precedent outcomes or impact facts |
 | Recommendation | `evidence_refs[]` linking to `ledger_diff` and other sections |
 
 **Quality scores:**
@@ -265,7 +261,7 @@ Ungrounded LLM claims are dropped, not passed to Review Portal ([SafePassage pat
 | Sub-engine timeout | Per-engine timeout; partial package with `status: partial` |
 | LLM failure | Return rule-based recommendations; lower grounding score |
 | Graph unavailable | Impact Engine falls back to entity-only impact list |
-| Ledger empty (cold start) | `ledger_diff.change_classification: first_of_kind`; Forecast uses impact-only patterns |
+| Ledger empty (cold start) | `ledger_diff.change_classification: first_of_kind`; lower impact confidence |
 | `review_first` profile | Skip sub-engines; complete in < 100ms |
 
 ---
@@ -292,7 +288,8 @@ Ungrounded LLM claims are dropped, not passed to Review Portal ([SafePassage pat
 | Queue / Event Bus | In / Out | `decision.classified` / `insight.ready` |
 | Classification Engine | Upstream | Routing profile and labels |
 | Knowledge Processing Engine | Upstream | Knowledge, entities, evidence |
-| Decision Ledger | Read | **Primary input for Ledger Diff Engine**; precedent outcomes for Forecast |
+| Decision Ledger | Read | **Primary input for Ledger Diff Engine** |
+| Forecast Engine | Sibling module | Consumes discussions; reads same ledger for precedents — not a sub-engine |
 | Decision Knowledge Graph | Read/Write | Impact traversal; relationship edges |
 | Vector DB | Read | Ledger record embeddings for diff retrieval |
 | Review & Approval Portal | Downstream | Consumes insight packages |

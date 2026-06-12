@@ -5,9 +5,12 @@ import type {
   ClassificationOutput,
   InsightPackage,
   LedgerEntry,
+  ChangePreview,
 } from '../types/pipeline'
 import { insightPackageMock } from '../data/insight-package-mock'
+import { changePreviewMock } from '../data/change-preview-mock'
 import { ledgerEntryMock } from '../data/ledger-entry-mock'
+import { consumerApiMock, consumerApiDiscussionMock } from '../data/consumer-api-mock'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -30,13 +33,22 @@ export async function runEventBus(_jobId: string): Promise<{ event_type: string;
   }
 }
 
-export async function runKnowledgeProcessing(_payloadRef: string): Promise<KnowledgeProcessingOutput> {
+export async function runKnowledgeProcessing(
+  _payloadRef: string,
+  config?: RunConfig,
+): Promise<KnowledgeProcessingOutput> {
   await delay(1200)
+  const isDiscussion = config?.inputType === 'confluence'
   return {
     knowledge_id: `kn_${Date.now()}`,
-    decision_candidate_count: 1,
-    entities_extracted: ['PostgreSQL', 'DynamoDB', 'Decision Ledger', 'Sarah Okonkwo', 'Marcus Chen'],
-    decision_signal: 'explicit_decision',
+    knowledge_kind: isDiscussion ? 'discussion' : 'decision_candidate',
+    decision_candidate_count: isDiscussion ? 0 : 1,
+    discussion_signal: isDiscussion,
+    entities_extracted: isDiscussion
+      ? ['PostgreSQL', 'DynamoDB', 'Decision Ledger', 'ADR-007']
+      : ['PostgreSQL', 'DynamoDB', 'Decision Ledger', 'Sarah Okonkwo', 'Marcus Chen'],
+    decision_signal: isDiscussion ? undefined : 'explicit_decision',
+    routing: { primary_path: isDiscussion ? 'discussion' : 'decision' },
   }
 }
 
@@ -54,13 +66,17 @@ export async function runClassification(_knowledgeId: string): Promise<Classific
     },
     routing: {
       analysis_profile: 'full_analysis',
-      sub_engines: ['ledger_diff', 'impact', 'forecast', 'recommendation'],
+      sub_engines: ['ledger_diff', 'impact', 'recommendation'],
     },
   }
 }
 
+export async function runForecastEngine(_knowledgeId: string): Promise<ChangePreview> {
+  await delay(800)
+  return changePreviewMock
+}
+
 export async function runAnalysisEngine(_classifiedId: string): Promise<InsightPackage> {
-  // Timing handled per sub-engine in the store; return full package after all phases
   await delay(4000)
   return insightPackageMock
 }
@@ -79,16 +95,7 @@ export async function runDecisionLedger(_approvedDecision: unknown): Promise<Led
   return ledgerEntryMock
 }
 
-export async function runConsumerApi(_ledgerId: string): Promise<{
-  query: string
-  answer: string
-  source_ledger_id: string
-}> {
+export async function runConsumerApi(_ledgerId: string, changePreviewId?: string) {
   await delay(800)
-  return {
-    query: 'Has our team officially verified the database decision — who approved it and what evidence backs it?',
-    answer:
-      'Yes — this is an approved Decision Ledger record (version 1). Approved by Sarah Okonkwo on 2024-11-15. Evidence: confluence://ADR-007, jira://KL-142 (spike), meeting://2024-11-14-arch-review. Decision: PostgreSQL over DynamoDB as the primary data store for the Decision Ledger module. This answer is drawn from a verified, immutable ledger entry — not search results or an AI-generated summary.',
-    source_ledger_id: ledgerEntryMock.id,
-  }
+  return changePreviewId ? consumerApiDiscussionMock : consumerApiMock
 }

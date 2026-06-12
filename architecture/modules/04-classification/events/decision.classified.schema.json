@@ -75,7 +75,7 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": ["ledger_diff", "impact", "forecast", "recommendation"]
+                "enum": ["ledger_diff", "impact", "recommendation"]
               }
             },
             "priority": {

@@ -165,7 +165,7 @@ A triage nurse for decisions: right department, right urgency, right level of sc
 
 ## 5. Analysis Engine ← SLOW DOWN HERE
 
-**UI cue:** Large node with 2×2 sub-engine grid. Subtitle: *Orchestrates four sub-engines*. Sub-nodes light up in dependency order.
+**UI cue:** Large node with 3 sub-engine grid. Subtitle: *Ledger diff · impact · recommend*. Sub-nodes light up in dependency order. *(Decision path only — meeting transcript demo.)*
 
 **Point at:** Each sub-node as its spinner appears. Click the Analysis node when complete to open the full Insight Package in the detail panel.
 
@@ -173,7 +173,7 @@ A triage nurse for decisions: right department, right urgency, right level of sc
 
 > "This is where Knowledge Ledger earns trust. The Analysis Engine doesn't just summarize the meeting — it compares this decision against what your organization has already approved, maps what it touches, predicts what to watch for, and suggests next steps."
 
-> "Four specialized engines run in a dependency chain. Two start in parallel. Each one builds on the last. Let them resolve before you move on."
+> "Three steps: Ledger Diff and Impact start in parallel. Recommendation runs last. Forecast is a separate module (09) on the discussion path — not part of Analysis."
 
 ---
 
@@ -222,9 +222,9 @@ Imagine opening your team's decision log and asking: "Have we decided this befor
 
 ### 5b. Impact Engine *(Phase 1 — parallel with Ledger Diff)*
 
-**UI cue:** Top-right sub-node *Impact Engine* shows spinner (~1.5s).
+**UI cue:** Top-right sub-node *Impact* shows spinner (~1.5s).
 
-**Point at:** Impact cell, then detail panel → `impact_map`.
+**Point at:** Impact cell, then detail panel → `impact map` section.
 
 #### Script
 
@@ -257,46 +257,9 @@ Before you merge a code change, you'd ask "what breaks if this goes wrong?" Impa
 
 ---
 
-### 5c. Forecast Engine *(Phase 2 — after Impact)*
+### 5c. Recommendation Engine *(Phase 2 — after Impact)*
 
-**UI cue:** Bottom-left sub-node *Forecast* — label shows `← after Impact` (~1.1s).
-
-**Point at:** Forecast cell, then detail panel → `forecast_report`.
-
-#### Script
-
-> "Forecast looks forward: **based on what we know about this change and its impact, what should we watch for?**"
-
-> "It combines the ledger diff — this is a new decision — with the impact map and patterns from how similar decisions played out in the past."
-
-> "High confidence band here. Likely outcome: relational audit queries stay within SLA at projected volume. Medium probability: we'll need partitioning if ledger volume exceeds the eighteen-month projection Marcus mentioned in the meeting."
-
-#### Plain English
-
-Not fortune-telling — more like a weather forecast built from precedent. "Last time we made a call like this under similar conditions, here's what happened."
-
-#### Technique
-
-| Concept | Accessible explanation |
-|---------|------------------------|
-| **Precedent grounding** | Predictions must link back to real ledger outcomes or impact facts — not invented by the model |
-| **Confidence band** | How much evidence supports the forecast (low / medium / high) |
-| **Predicted outcomes** | Specific scenarios with probability labels |
-| **Cold start** | When there's no precedent (first_of_kind), forecast leans more on impact analysis |
-
-**Important trust note:** Forecast language is synthesized by AI, but every claim should trace to evidence. Ungrounded predictions are dropped, not shown to reviewers.
-
-#### Demo output to mention
-
-- `confidence_band`: high
-- `predicted_outcomes`: SLA performance (high), partitioning needed (medium)
-- `summary`: low operational risk given existing Postgres expertise
-
----
-
-### 5d. Recommendation Engine *(Phase 3 — after Forecast)*
-
-**UI cue:** Bottom-right sub-node *Recommendation* — label shows `← after Forecast` (~0.9s).
+**UI cue:** Bottom sub-node *Recommendation* — label shows `← after Ledger Diff + Impact` (~1.1s).
 
 **Point at:** Recommendation cell, then detail panel → `recommendations[]`.
 
@@ -304,7 +267,7 @@ Not fortune-telling — more like a weather forecast built from precedent. "Last
 
 > "Recommendation answers: **what should the team do about this?**"
 
-> "It synthesizes everything upstream — the ledger diff, impact map, and forecast — into concrete governance steps."
+> "It synthesizes the ledger diff and impact map into concrete governance steps."
 
 > "Three actions here: document the rationale in the ledger as an approved record. Assign Marcus as the Postgres schema owner. Flag a twelve-month review checkpoint to reassess scale."
 
@@ -336,7 +299,7 @@ By the time a human opens the Review Portal, the system has already done the hom
 
 #### Script
 
-> "Behind the scenes, an aggregator merges all four outputs into one review-ready package — validated against a schema, scored for completeness and grounding, and published as `insight.ready`."
+> "Behind the scenes, an aggregator merges all three steps into one review-ready package — validated against a schema, scored for completeness and grounding, and published as `insight.ready`."
 
 > "Every claim in this package should be traceable. That's the difference between 'AI said so' and 'here's the evidence.'"
 
@@ -354,7 +317,21 @@ Quality control before a human ever sees it: are all sections present? Is every 
 
 ### Analysis Engine — closing beat
 
-> "Notice the order: compare to verified history first, map impact second, forecast third, recommend last. The system leads with *what changed*, not *what sounds similar*. That's what makes the output trustworthy."
+> "Notice the order: compare to verified history first, map impact second, recommend last. The system leads with *what changed*, not *what sounds similar*. That's what makes the output trustworthy."
+
+---
+
+## 5-alt. Forecast Engine *(discussion path — Confluence demo)*
+
+**UI cue:** Select **Confluence page** on input screen. After Knowledge Processing, decision-path nodes gray out (Skipped). Forecast appears as a **single standard node** (no sub-engine grid). Edge `change.preview.ready` goes directly to Consumer API.
+
+**Point at:** Forecast node while processing, then detail panel → full `change_preview` (shifts, precedent matches, seen_before_headline).
+
+### Script
+
+> "No decision candidate — but the design thread is shifting toward PostgreSQL. Forecast captures the change and answers: **have we seen this before?** — matching ADR-007 from the ledger."
+
+> "Change preview is **advisory** — not approved truth. Consumer API serves precedent Q&A; humans still own decisions through the decision path."
 
 **Action:** Let the node finish and the canvas zoom back out before continuing.
 
@@ -368,7 +345,7 @@ Quality control before a human ever sees it: are all sections present? Is every 
 
 ### Script
 
-> "Automation stops at the trust boundary. A human sees everything the Analysis Engine produced — the diff, impact, forecast, recommendations — and decides whether to approve."
+> "Automation stops at the trust boundary. A human sees everything the Analysis Engine produced — the diff, impact, recommendations — and decides whether to approve."
 
 > "Some things shouldn't be fully automated. When trust is involved, someone has to own it. The portal doesn't replace that moment — it makes the person in that moment faster and better informed."
 

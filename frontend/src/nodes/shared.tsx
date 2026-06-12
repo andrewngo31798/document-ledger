@@ -48,6 +48,8 @@ export function StateBadge({ status }: { status: NodeStatus }) {
       return <Pill color="var(--accent-output)" soft="var(--accent-output-soft)"><IconCheck size={11} stroke={2.5} /> Done</Pill>
     case 'rejected':
       return <Pill color="var(--accent-rejected)" soft="var(--accent-rejected-soft)"><IconX size={11} stroke={2.5} /> Rejected</Pill>
+    case 'skipped':
+      return <Pill color="var(--color-text-tertiary)" soft="var(--color-background-secondary)">Skipped</Pill>
     default:
       return null
   }
