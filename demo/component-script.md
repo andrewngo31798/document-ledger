@@ -142,7 +142,7 @@ Like a careful note-taker at the meeting: who was involved, what was decided, wh
 
 > "This one is **technical** — data storage and architecture. Confidence is ninety-one percent, high enough to route automatically. If it were ambiguous, it would escalate for human triage first."
 
-> "It also picks the analysis profile: `full_analysis` — meaning all four analysis engines will run."
+> "It also picks the analysis profile: `full_analysis` — meaning all three Analysis sub-engines will run (ledger diff, impact, recommendation)."
 
 ### Plain English
 

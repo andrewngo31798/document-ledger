@@ -39,7 +39,7 @@ Classification should exploit structured upstream output, not re-parse raw text 
 
 | Output | Consumer | Purpose |
 | ------ | -------- | ------- |
-| `domain` | Analysis Engine, Review Portal | Lens for impact/forecast interpretation |
+| `domain` | Analysis Engine, Review Portal | Lens for impact interpretation; discussion precedent → Forecast Engine (09) |
 | `categories[]` | Analysis Engine, Decision Ledger | Filtering, ADR catalog alignment |
 | `tags[]` | Consumer API, search | Cross-cutting discovery |
 | `confidence` | Analysis Router, Review Portal | Escalation and review priority |
@@ -172,8 +172,9 @@ Analysis Engine sub-engines have different value by decision type:
 | ---------- | --------------- | ---------------- |
 | Impact | Technical/architecture, dependency-rich | Pure organizational staffing |
 | Ledger Diff | **All types** — every decision must be compared to ledger baseline | — |
-| Forecast | Architecture, infrastructure, policy with rollout risk | One-off administrative decisions |
 | Recommendation | Governance gaps, ambiguous hybrid decisions | Clear, low-risk operational choices |
+
+> **Discussion precedent / change capture** is not an Analysis sub-engine — see [Forecast Engine (module 09)](../../09-forecast-engine/README.md).
 
 Routing matrix (default):
 

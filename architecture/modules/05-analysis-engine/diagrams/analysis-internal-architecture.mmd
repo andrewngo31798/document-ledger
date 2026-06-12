@@ -39,10 +39,6 @@ flowchart TB
     end
 
     subgraph phase2 [Phase 2 — sequential]
-        fe[Forecast Engine<br/>precedent patterns + templates<br/>→ predicted_outcomes]
-    end
-
-    subgraph phase3 [Phase 3 — sequential]
         re[Recommendation Engine<br/>Layer 1: rule engine<br/>Layer 2: LLM enrichment]
     end
 
@@ -69,17 +65,11 @@ flowchart TB
     graph --> ie2
     kpe --> ie1
 
-    lde5 --> fe
-    ie3 --> fe
-    loader --> fe
-
     lde5 --> re
     ie3 --> re
-    fe --> re
 
     lde5 --> aggregator
     ie3 --> aggregator
-    fe --> aggregator
     re --> aggregator
 
     aggregator --> quality

@@ -19,7 +19,7 @@ Document Ledger is not plug-and-play on day one. Four foundations must exist bef
 | **Team context files** | Gazetteers and service catalog so extraction and impact are not blind |
 | **Human review loop** | Reviewers who approve the first baseline decisions into the ledger |
 
-Until approved decisions exist, the system runs in **cold start** mode: analysis works, but ledger diff is mostly `first_of_kind` and impact relies on entities rather than a rich dependency graph.
+Until approved decisions exist, the system runs in **cold start** mode: analysis works, but ledger diff is mostly `first_of_kind` and impact relies on entities rather than a rich dependency graph. The **discussion path** (Forecast Engine) can still surface change and precedent matches once a small ledger baseline exists.
 
 ---
 
@@ -29,7 +29,7 @@ Until approved decisions exist, the system runs in **cold start** mode: analysis
 | --------- | -------- | ------- |
 | **PostgreSQL** | Yes | Knowledge records, entities, classifications, insight packages, ledger, graph adjacency |
 | **Object storage** | Yes | Raw Jira, Confluence, meeting payloads |
-| **Queue / Event Bus** | Yes | Pipeline events: `source.triggered` → `decision.approved` |
+| **Queue / Event Bus** | Yes | Pipeline events: `source.triggered` → `decision.approved` (decision path) or `change.preview.ready` (discussion path) |
 | **pgvector** | Yes | Ledger embedding search for Ledger Diff Engine |
 | **Redis** | Yes | Signal Intake idempotency and job state |
 | **LLM API** | Yes (limited) | Classification fallback, Forecast Engine (module 09), recommendation synthesis |
@@ -229,7 +229,7 @@ Each human approval:
 - Adds a **ledger record** — diff baseline for future decisions
 - Adds **decision nodes** to the Decision Knowledge Graph
 - Improves **vector search** for Ledger Diff Engine
-- Grounds **Forecast** in precedent outcomes
+- Grounds **Forecast Engine (module 09)** precedent retrieval for discussion paths
 
 ---
 

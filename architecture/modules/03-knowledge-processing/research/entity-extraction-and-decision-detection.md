@@ -278,6 +278,18 @@ Processing order in Knowledge Processing Engine:
 4. **Decision verification** (classifier / LLM with grounding)
 5. Persist both with shared `chunk_id` references
 
+### 3.3 Discussion signals (routing to Forecast Engine)
+
+Not every ingested document contains a **decision candidate**. Confluence threads, design debates, and page updates often show **position language** or **shifts** without closure.
+
+| Signal | Detection hint | `routing.primary_path` |
+| ------ | -------------- | ---------------------- |
+| Explicit decision | `decision_candidate_count ≥ 1` | `decision` → Classification |
+| Discussion / debate | `discussion_signal = true`, no candidate | `discussion` → [Forecast Engine (09)](../../09-forecast-engine/README.md) |
+| Informational only | Neither signal | `none` (audit only) |
+
+Discussion detection reuses the same grounding rules: store evidence spans, fail closed on ungrounded shifts. Forecast Engine consumes structured knowledge — KPE does not run precedent retrieval.
+
 ---
 
 ## Part 4 — Decision record for module 03

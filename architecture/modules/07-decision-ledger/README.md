@@ -47,6 +47,8 @@ Consumer API
 | **Search Indexer**   | Index records for retrieval and RAG          |
 | **Query Service**    | Internal read API for Consumer API           |
 
+**Downstream readers:** Consumer API (authoritative answers); **Forecast Engine (module 09)** (precedent retrieval for discussion path — read-only).
+
 ---
 
 # 4. Ledger Record Schema (Draft)

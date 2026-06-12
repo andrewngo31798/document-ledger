@@ -77,6 +77,8 @@ Raw content
   → Content Chunker
   → Entity Extractor
   → Decision Candidate Detector
+  → Discussion Signal Detector
+  → Routing Resolver (primary_path)
   → Metadata Enricher
   → Knowledge Store Writer
 ```

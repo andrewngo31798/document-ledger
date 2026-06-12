@@ -7,9 +7,12 @@ Version-controlled C4 diagrams aligned with [System Architecture](../../overview
 | Level | File | Description |
 | ----- | ---- | ----------- |
 | **Context (L1)** | [c4-context.mmd](c4-context.mmd) | Document Ledger in its environment: users, external sources, downstream AI consumers |
-| **Container (L2)** | [c4-container.mmd](c4-container.mmd) | Deployable containers, data stores, and async event flow across the 8 pipeline modules |
-| **Component (L3)** | [c4-component-analysis-engine.mmd](c4-component-analysis-engine.mmd) | Internal components of the Analysis Engine and its four sub-engines |
+| **Container (L2)** | [c4-container.mmd](c4-container.mmd) | Deployable containers, data stores, and async event flow — **dual-path** (decision + discussion) |
+| **Component — Analysis (L3)** | [c4-component-analysis-engine.mmd](c4-component-analysis-engine.mmd) | Analysis Engine and its **three** decision-path sub-engines |
+| **Component — Forecast (L3)** | [c4-component-forecast-engine.mmd](c4-component-forecast-engine.mmd) | Forecast Engine (module 09) — change, precedent, forward |
+| **Dual-path overview** | [../../overview/dual-path-pipeline.mmd](../../overview/dual-path-pipeline.mmd) | Fork after Knowledge Processing |
 | **Analysis detail (L3+)** | [../../modules/05-analysis-engine/diagrams/README.md](../../modules/05-analysis-engine/diagrams/README.md) | Internal architecture, AI layer, DAG, grounding pipeline |
+| **Forecast detail** | [../../modules/09-forecast-engine/README.md](../../modules/09-forecast-engine/README.md) | Discussion-path design and schemas |
 
 ## Rendered exports
 
@@ -33,13 +36,13 @@ npx @mermaid-js/mermaid-cli -i c4-container.mmd -o c4-container.png -b transpare
 
 ## Design notes
 
-These diagrams replace earlier exports that had structural drift from the canonical architecture:
-
 - **Queue / Event Bus** is modeled as its own container, not an implicit hop.
-- Pipeline order is **Signal Intake → Queue → Knowledge Processing → Classification → Analysis → Review & Approval Portal → Decision Ledger → Consumer API**.
-- **Classification Engine** does not bypass Analysis or write directly to Review.
+- **Dual-path routing** after Knowledge Processing:
+  - **Decision path:** Classification → Analysis → Review → Decision Ledger → Consumer API
+  - **Discussion path:** Forecast Engine (09) → Consumer API (`change.preview.ready`)
+- **Forecast Engine** is a **top-level pipeline container** (module 09), not an Analysis sub-engine.
 - **Analysis Engine** does not write directly to Decision Ledger; approval happens in Review & Approval Portal first.
-- Analysis sub-engines (Ledger Diff, Impact, Forecast, Recommendation) are shown at component level, not as top-level pipeline containers.
+- Analysis sub-engines (Ledger Diff, Impact, Recommendation) are shown at component level inside Analysis only.
 
 ## Canonical module mapping
 
@@ -53,3 +56,4 @@ These diagrams replace earlier exports that had structural drift from the canoni
 | Review & Approval Portal | [06-review-portal](../../modules/06-review-portal/) |
 | Decision Ledger | [07-decision-ledger](../../modules/07-decision-ledger/) |
 | Consumer API | [08-consumer-api](../../modules/08-consumer-api/) |
+| **Forecast Engine** | [09-forecast-engine](../../modules/09-forecast-engine/) |

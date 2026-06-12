@@ -1,84 +1,55 @@
 flowchart TB
-    subgraph inputs [Structured inputs — no generative AI]
-        ctx[Analysis context<br/>candidate, entities, classification]
+    subgraph inputs [Structured inputs]
+        classified[classified_decision]
         ledger[(Decision Ledger)]
-        vector[(Vector DB)]
         graph[(Knowledge Graph)]
-        rules[(Governance rule set<br/>version-controlled)]
+        vector[(Vector DB)]
     end
 
-    subgraph deterministic [Deterministic intelligence layer]
-        direction TB
-        d_retrieval[Hybrid retrieval<br/>vector + BM25 + graph expand]
-        d_rerank[RRF fusion + cross-encoder rerank<br/>dedicated reranker — not generative LLM]
-        d_diff[Rule-based field diff<br/>8 comparable dimensions]
-        d_classify[Change classification mapper<br/>first_of_kind → conflicts]
-        d_graph[Graph traversal<br/>2–3 hop blast radius]
-        d_risk[Risk dimension scorer<br/>technical, delivery, people]
-        d_forecast[Precedent pattern extraction<br/>category templates + ledger outcomes]
-        d_rules[Rule engine<br/>required governance items]
-        d_quality[Quality scorer<br/>completeness + grounding + priority]
-
-        d_retrieval --> d_rerank --> d_diff --> d_classify
-        d_graph --> d_risk
-        d_forecast
-        d_rules
+    subgraph deterministic [Deterministic layer — no generative LLM]
+        d_retrieve[Hybrid retrieval<br/>vector + BM25 + graph edges]
+        d_diff[Structured field diff<br/>8 dimensions + change classification]
+        d_traverse[Graph traversal<br/>2–3 hops blast radius]
+        d_risk[Risk dimension scoring<br/>technical, delivery, people]
+        d_rules[Governance rule engine<br/>required recommendations]
     end
 
-    subgraph aiGateway [AI gateway — synthesis only]
-        direction TB
-        router[Model Router<br/>tier: fast default / large escalate ≤5%]
-        schemaVal[JSON schema validator<br/>structured output mode]
-        groundVal[Grounding verifier<br/>SafePassage / DRAFT pattern<br/>substring, graph ID, ledger ID checks]
-        failClosed[Fail-closed filter<br/>drop ungrounded claims]
-
-        router --> schemaVal --> groundVal --> failClosed
+    subgraph llm [LLM synthesis layer — grounded only]
+        gateway[AI Gateway<br/>Model Router → JSON Schema → Grounding Verifier]
+        llm_diff[Ledger Diff<br/>headline + summary from changes[]]
+        llm_impact[Impact<br/>optional summary from traversal facts]
+        llm_rec["Recommendation<br/>enrichment only<br/>evidence_refs required"]
     end
 
-    subgraph llmCalls [LLM calls by sub-engine]
-        direction LR
-        llm_diff["Ledger Diff<br/>headline + summary<br/>from structured diff only<br/>Phase 2: rerank assist"]
-        llm_impact["Impact<br/>summary narrative<br/>optional, from traversal facts"]
-        llm_forecast["Forecast<br/>outcome narratives<br/>grounded_in[] required<br/>≤5 outcomes"]
-        llm_reco["Recommendation<br/>enrich rule output<br/>evidence_refs[] required<br/>cannot override required rules"]
+    subgraph output [Output]
+        pkg[Insight Package<br/>ledger_diff, impact_map,<br/>recommendations]
+        review[Review Portal]
     end
 
-    subgraph outputs [Validated outputs]
-        pkg[Insight Package<br/>ledger_diff, impact_map,<br/>forecast_report, recommendations]
-        prov[provenance<br/>model_versions, llm_calls]
-    end
+    classified --> d_retrieve
+    ledger --> d_retrieve
+    vector --> d_retrieve
+    graph --> d_retrieve
+    d_retrieve --> d_diff
+    classified --> d_traverse
+    graph --> d_traverse
+    d_traverse --> d_risk
 
-    ctx --> deterministic
-    ledger --> d_retrieval
-    vector --> d_retrieval
-    graph --> d_retrieval
-    graph --> d_graph
-    ledger --> d_forecast
-    rules --> d_rules
+    d_diff --> gateway
+    d_risk --> gateway
+    d_rules --> gateway
 
-    d_diff --> llm_diff
-    d_classify --> llm_diff
-    d_risk --> llm_impact
-    d_forecast --> llm_forecast
-    d_rules --> llm_reco
-    d_classify --> llm_forecast
-    d_risk --> llm_forecast
+    gateway --> llm_diff
+    gateway --> llm_impact
+    gateway --> llm_rec
 
-    llm_diff --> router
-    llm_impact --> router
-    llm_forecast --> router
-    llm_reco --> router
-
-    failClosed --> pkg
-    d_classify --> pkg
+    d_diff --> pkg
     d_risk --> pkg
     d_rules --> pkg
-    d_quality --> pkg
-    failClosed --> prov
+    llm_diff --> pkg
+    llm_impact --> pkg
+    llm_rec --> pkg
 
-    subgraph policy [AI policy constraints]
-        p1["Retrieval = deterministic"]
-        p2["Confidence scores = calibration, not LLM"]
-        p3["Governance gates = rule engine"]
-        p4["LLM budget per profile<br/>full: 2–4 calls / review_first: 0"]
-    end
+    pkg --> review
+
+    note["Discussion precedent + change capture →<br/>Forecast Engine (module 09), not Analysis"]

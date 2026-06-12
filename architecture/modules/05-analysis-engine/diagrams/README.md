@@ -23,8 +23,8 @@ Ingress          Orchestration       Sub-engines (DAG)              Egress
 ────────         ─────────────       ─────────────────              ──────
 Job Consumer  →  Orchestrator    →   Phase 1: Ledger Diff      →  Aggregator
 Context Loader   Profile Router      Phase 1: Impact           →  Quality Scorer
-                                      Phase 2: Forecast         →  Store + Publisher
-                                      Phase 3: Recommendation   →  Audit Logger
+                                      Phase 2: Recommendation   →  Store + Publisher
+                                                                  →  Audit Logger
 ```
 
 See [analysis-internal-architecture.mmd](analysis-internal-architecture.mmd).
@@ -107,8 +107,9 @@ The Analysis Engine is **not** a single end-to-end LLM prompt. AI is confined to
 | ---------- | ------------------ | --------------------- |
 | **Ledger Diff** | Hybrid retrieval, RRF, field diff, change classification | Headline + summary **only from** structured `changes[]` |
 | **Impact** | Graph traversal, risk dimension scoring | Optional `summary` from traversal facts |
-| **Forecast** | Precedent pattern extraction, category templates | `predicted_outcomes[]` narratives with mandatory `grounded_in[]` |
 | **Recommendation** | Rule engine (required items) | Additional `recommended` / `optional` items; **cannot override** required rules |
+
+> **Precedent / change capture for discussions** → [Forecast Engine (module 09)](../../09-forecast-engine/README.md), not Analysis.
 
 ### Where LLM must NOT be used
 
@@ -135,7 +136,6 @@ Model Router → JSON Schema Validator → Grounding Verifier → Fail-Closed Fi
 
 | Task | Model tier |
 | ---- | ---------- |
-| Forecast synthesis | Small / fast |
 | Recommendation enrichment | Small / fast |
 | Cross-encoder rerank | Dedicated reranker (non-generative) |
 | Complex hybrid decisions | Large model escalation (≤5% of jobs) |
@@ -146,8 +146,9 @@ Model Router → JSON Schema Validator → Grounding Verifier → Fail-Closed Fi
 | --------- | -------- |
 | Ledger Diff | Rule-based diff; optional headline LLM; no rerank |
 | Impact | Graph traversal only; optional summary LLM |
-| Forecast | Template + LLM with `grounded_in` validation |
 | Recommendation | **Rule engine only** (10–15 rules) |
+
+Forecast Engine (module 09) is a separate service — see [09-forecast-engine](../../09-forecast-engine/README.md).
 
 ---
 
@@ -162,7 +163,6 @@ Every generative claim must be traceable:
 | Ledger diff field | `evidence_candidate` + `evidence_ledger` or ledger record ID |
 | Change classification | Primary ledger reference + relationship rationale |
 | Affected system | Graph edge ID or KPE entity reference |
-| Forecast outcome | `grounded_in[]` → precedent or impact fact |
 | Recommendation | `evidence_refs[]` → `ledger_diff`, `impact_map`, etc. |
 
 **Quality scores:**
@@ -216,7 +216,7 @@ Phase 1 risk dimensions exclude `compliance` and `financial` (deferred — confi
 | ----- | ------------ | ------- |
 | Knowledge Processing tables | Read | Context Loader, Impact seeds |
 | `classified_decisions` | Read | Context Loader, routing |
-| Decision Ledger | Read | Ledger Diff, Forecast precedents |
+| Decision Ledger | Read | Ledger Diff |
 | Vector DB (pgvector) | Read | Ledger Diff retrieval |
 | Decision Knowledge Graph | Read / Write | Ledger Diff (relationships), Impact (traversal) |
 | `insight_packages` | Write | Insight Store Writer |

@@ -110,7 +110,7 @@ Queue / Event Bus
      change.preview.ready
 ```
 
-Diagrams: [forecast-pipeline.mmd](diagrams/forecast-pipeline.mmd) · [forecast-internal-architecture.mmd](diagrams/forecast-internal-architecture.mmd)
+Diagrams: [diagrams/README.md](diagrams/README.md) · [forecast-pipeline.mmd](diagrams/forecast-pipeline.mmd) · [forecast-internal-architecture.mmd](diagrams/forecast-internal-architecture.mmd)
 
 ### Execution DAG
 

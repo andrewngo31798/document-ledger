@@ -90,31 +90,27 @@ retrieval.
 
 This is the purpose of the demo. Everything before was setup. Zoom into the ReactFlow DAG.
 
-A classified decision arrives. The Analysis Engine receives it. Four sub-engines activate —
-show them as a live DAG, edges animating in dependency order, each node resolving before
-the next fires.
+A classified decision arrives. The Analysis Engine receives it. Three sub-engines activate —
+Ledger Diff and Impact in parallel, then Recommendation.
 
 **Walk each node as it activates:**
 
-**Impact Engine** — fires first
+**Ledger Diff** — parallel with Impact
+Compares the candidate against approved ledger records. Shows what's new — first of kind,
+amends, supersedes, or conflicts.
+> "What's new compared to what we've already approved?"
+
+**Impact Engine** — parallel with Ledger Diff
 Traverses the knowledge graph. Lights up which services, teams, and projects are in the
-blast radius. Edges animate as dependencies are traced.
+blast radius.
 > "It maps what this decision touches — before anyone has to ask."
 
-**Similarity Engine** — runs in parallel with Impact
-Vector and lexical search over the ledger. Surfaces decisions that look like this one.
-Shows what happened after.
-> "Has your organization made this call before? Here's the record."
-
-**Forecast Engine** — depends on Similarity output
-Synthesizes patterns from past precedents. Outputs a consequence probability, a timeline
-estimate, a risk signal.
-> "Based on what happened last time — here's what to watch for."
-
-**Recommendation Engine** — depends on Impact + Forecast
-Synthesizes all three upstream outputs. Produces governance next-steps: escalate,
-document rationale, flag a conflict, assign an owner.
+**Recommendation Engine** — after diff + impact
+Produces governance next-steps: document rationale, assign an owner, flag a review checkpoint.
 > "By the time a human sees this, the system has already done the research."
+
+**Discussion path (optional beat):** Confluence thread with no decision → Forecast Engine
+(module 09) captures change and answers "have we seen this before?" — not part of Analysis.
 
 Let each result card resolve visually before moving on. Don't rush this. The DAG activating
 in dependency order IS the demo.

@@ -12,6 +12,8 @@ flowchart TB
         chunker[Content Chunker]
         entities[Entity Extractor]
         detector[Decision Candidate Detector]
+        discussion[Discussion Signal Detector]
+        router[Routing Resolver<br/>primary_path]
         enricher[Metadata Enricher]
         writer[Knowledge Store Writer]
         publisher[Event Publisher]
@@ -25,7 +27,8 @@ flowchart TB
 
     subgraph output [Output]
         queueOut["Queue / Event Bus<br/>source.ingested"]
-        classification[Classification Engine]
+        classification[Classification Engine<br/>decision path]
+        forecast[Forecast Engine<br/>discussion path]
     end
 
     queueIn --> consumer
@@ -36,13 +39,17 @@ flowchart TB
     normalizer --> chunker
     chunker --> entities
     entities --> detector
-    detector --> enricher
+    entities --> discussion
+    detector --> router
+    discussion --> router
+    router --> enricher
     enricher --> writer
     writer --> postgres
     writer --> objectStore
     writer --> publisher
     publisher --> queueOut
-    queueOut --> classification
+    queueOut -->|primary_path = decision| classification
+    queueOut -->|primary_path = discussion| forecast
     orchestrator --> audit
     fetcher --> audit
     writer --> audit

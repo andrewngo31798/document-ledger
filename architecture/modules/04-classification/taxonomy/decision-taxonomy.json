@@ -102,13 +102,13 @@
       "id": "standard_analysis",
       "label": "Standard analysis",
       "sub_engines": ["ledger_diff", "impact", "recommendation"],
-      "description": "Business decisions where forecast is lower value"
+      "description": "Business decisions with same sub-engines as full analysis; lighter impact templates"
     },
     {
       "id": "lightweight_analysis",
       "label": "Lightweight analysis",
       "sub_engines": ["ledger_diff", "recommendation"],
-      "description": "Low-risk or operational decisions; skip deep impact/forecast"
+      "description": "Low-risk or operational decisions; skip deep impact analysis"
     },
     {
       "id": "review_first",

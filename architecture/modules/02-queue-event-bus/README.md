@@ -51,9 +51,10 @@ Knowledge Processing Engine
 | Event Type          | Producer              | Consumer                    |
 | ------------------- | --------------------- | --------------------------- |
 | **source.triggered**| Signal Intake Engine  | Knowledge Processing Engine |
-| **source.ingested** | Knowledge Processing Engine | Classification Engine       |
-| **decision.classified** | Classification Engine | Analysis Engine         |
+| **source.ingested** | Knowledge Processing Engine | Classification Engine **or** Forecast Engine (see `routing.primary_path`) |
+| **decision.classified** | Classification Engine | Analysis Engine (decision path) |
 | **insight.ready**   | Analysis Engine       | Review & Approval Portal    |
 | **decision.approved** | Review & Approval Portal | Decision Ledger          |
+| **change.preview.ready** | Forecast Engine | Consumer API (discussion path) |
 
 > TBD: Final event schema, broker choice (Kafka / SQS / RabbitMQ / BullMQ), and retry policy.

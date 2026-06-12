@@ -1,6 +1,8 @@
 # Deep Research: Analysis Engine
 
-Comprehensive investigation for **Analysis Engine** (module 05) — the pipeline's core intelligence layer. Covers orchestration, all four sub-engines, grounding, evaluation, and phased implementation.
+Comprehensive investigation for **Analysis Engine** (module 05) — the **decision-path** intelligence layer. Covers orchestration, three sub-engines (Ledger Diff, Impact, Recommendation), grounding, evaluation, and phased implementation.
+
+> **Forecast Engine** (change capture, precedent Q&A for discussions) is **module 09** — see [09-forecast-engine/README.md](../../09-forecast-engine/README.md). It is not an Analysis sub-engine.
 
 Related: [Module README](../README.md) · [Classification routing](../04-classification/README.md) · [Insight package schema](../schemas/insight-package.schema.json)
 
@@ -14,10 +16,10 @@ The Analysis Engine is not a single LLM call. Its **primary job** is to answer:
 
 Production-grade decision analysis requires:
 
-1. **Ledger diff first** — structured comparison against approved records before impact or forecast
-2. **Deterministic retrieval and graph traversal** — impact and precedent discovery must be auditable
-3. **LLM synthesis second** — only for diff summarization, forecasting language, and recommendation drafting grounded in retrieved facts
-4. **DAG orchestration** — Ledger Diff + Impact in parallel → Forecast → Recommendation
+1. **Ledger diff first** — structured comparison against approved records before impact analysis
+2. **Deterministic retrieval and graph traversal** — impact discovery must be auditable
+3. **LLM synthesis second** — only for diff summarization and recommendation drafting grounded in retrieved facts
+4. **DAG orchestration** — Ledger Diff + Impact in parallel → Recommendation
 5. **Profile-based execution** — Classification Engine controls cost/latency via `routing.sub_engines`
 6. **Grounded insight packages** — every claim traceable; Review Portal is the trust gate, not the model
 
@@ -29,16 +31,13 @@ Recommended architecture: **Ledger-centric diff** with hybrid retrieval against 
 
 ### 1.1 Why DAG, not parallel fan-out
 
-The four sub-engines are **not independent**:
+The three sub-engines are **not independent**:
 
 | Sub-engine | Depends on |
 | ---------- | ---------- |
 | Ledger Diff | Context loader + Decision Ledger (read) |
 | Impact | Context loader only |
-| Forecast | Ledger diff + impact map + classified decision |
-| Recommendation | Ledger diff + Impact + Forecast (+ rules) |
-
-Running all four in pure parallel wastes compute (Forecast/Recommendation would wait anyway) or produces lower-quality output (Forecast without impact context).
+| Recommendation | Ledger diff + Impact (+ rules) |
 
 **Recommended DAG:**
 
@@ -49,16 +48,15 @@ decision.classified
        │                                    │
        └─► [Phase 1] Impact Engine ────────┤
                                             ▼
-                              [Phase 2] Forecast Engine
-                                            │
-                                            ▼
-                         [Phase 3] Recommendation Engine
+                         [Phase 2] Recommendation Engine
                                             │
                                             ▼
                               Insight Aggregator → Quality Scorer
 ```
 
-Phase 1 parallelizes ledger comparison (I/O-heavy retrieval + diff) alongside impact traversal. Phase 2 and 3 are sequential synthesis stages grounded in the diff.
+Phase 1 parallelizes ledger comparison (I/O-heavy retrieval + diff) alongside impact traversal. Phase 2 synthesizes governance recommendations grounded in both.
+
+**Discussion-path precedent and change capture** → [Forecast Engine (module 09)](../../09-forecast-engine/README.md).
 
 ### 1.2 Profile-based routing
 
@@ -66,13 +64,13 @@ Classification Engine passes `routing.sub_engines`. Analysis Orchestrator valida
 
 | Profile | Enabled nodes | Skip |
 | ------- | ------------- | ---- |
-| `full_analysis` | ledger_diff, impact, forecast, recommendation | — |
-| `standard_analysis` | ledger_diff, impact, recommendation | forecast |
-| `lightweight_analysis` | ledger_diff, recommendation | impact, forecast (impact optional stub) |
+| `full_analysis` | ledger_diff, impact, recommendation | — |
+| `standard_analysis` | ledger_diff, impact, recommendation | — |
+| `lightweight_analysis` | ledger_diff, recommendation | impact (optional stub) |
 | `review_first` | none | all sub-engines |
 
 **Dependency rules:**
-- If `forecast` enabled → `impact` MUST be enabled
+- If `impact` enabled → `ledger_diff` MUST be enabled
 - If `recommendation` enabled → `ledger_diff` MUST be enabled
 - Violations → reject job to DLQ with audit error
 
@@ -92,7 +90,6 @@ For Document Ledger MVP: **in-process DAG** with stage-level retry. Migrate to T
 | ------------ | -------- |
 | Ledger Diff fails | Job fails or `ledger_diff.change_classification: no_ledger_match` with warning; no insight without headline |
 | Impact fails | Continue with empty impact_map; lower grounding score; warn in package |
-| Forecast fails | Continue; Recommendation skips forecast-informed items |
 | Recommendation fails | Return package with analysis sections but empty recommendations |
 | Aggregator/schema fail | Job fails; no `insight.ready`; DLQ |
 
@@ -102,12 +99,12 @@ Never publish an insight package with `status: completed` if decision summary is
 
 | Profile | LLM budget (target) | Graph/vector queries |
 | ------- | ------------------- | -------------------- |
-| `full_analysis` | 2–4 calls, ~8K output tokens | 5–15 |
+| `full_analysis` | 2–3 calls, ~6K output tokens | 5–15 |
 | `standard_analysis` | 1–2 calls | 3–8 |
 | `lightweight_analysis` | 0–1 calls | 1–3 |
 | `review_first` | 0 calls | 0 |
 
-LLM calls are reserved for Forecast summary and Recommendation synthesis — not for retrieval.
+LLM calls are reserved for diff/recommendation synthesis — not for retrieval. Discussion precedent Q&A is handled by Forecast Engine (module 09).
 
 ---
 
@@ -316,74 +313,19 @@ Graph `supersedes` / `conflicts_with` edges boost conflict/supersedes classifica
 
 ---
 
-## Part 4 — Forecast Engine
+## Part 4 — Forecast Engine (moved to Module 09)
 
-### 4.1 Problem definition
+Forecast is **no longer an Analysis sub-engine**. It runs on the **discussion path** when Knowledge Processing detects a `discussion_signal` without a decision candidate.
 
-Given ledger diff + impact map + classified decision, answer: **What outcomes and risks are likely if we adopt this change, and on what horizon?**
+| Concern | Owner module |
+| ------- | -------------- |
+| What's shifting in a thread? | Forecast — Change Detector |
+| Have we seen this before? | Forecast — Precedent Engine |
+| Optional forward signals | Forecast — Forward Projector |
+| Decision diff vs ledger | Analysis — Ledger Diff |
+| Blast radius for a **decision** | Analysis — Impact |
 
-Forecasting organizational decisions is **not prediction** — it is **structured consequence analysis** grounded in evidence, aligned with ADR consequence sections ([Structured MADR](https://github.com/zircote/structured-madr), [AWS ADR guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/)).
-
-### 4.2 Recommended approach
-
-**Evidence-based forecast synthesis (not free-form LLM prediction):**
-
-```
-Input assembly
-  • Ledger diff (change classification, primary reference, field deltas)
-  • Impact map (affected systems, risk dimensions)
-  • Related ledger records (outcomes from ledger metadata if available)
-  • Category-specific forecast templates
-
-Pattern extraction (deterministic)
-  • Match similar decision outcomes (e.g., 2/3 OAuth migrations had rollout delays)
-  • Map impact risk dimensions to forecast categories
-  • Apply domain templates (security_compliance → audit/regulatory items)
-
-LLM synthesis (grounded)
-  • Structured JSON output: predicted_outcomes[]
-  • Each outcome MUST include grounded_in[] refs
-  • Use likelihood bands, not false precision: unlikely | possible | likely | very_likely
-  • Include rollback_considerations (required for technical decisions)
-
-Validation
-  • Drop outcomes without grounded_in refs
-  • Cap at 5 outcomes per package
-```
-
-DRAFT research (Domain Specific Retrieval Augmented Few-Shot Fine-Tuning for ADRs) shows RAG + fine-tuning improves ADD generation quality ([arXiv:2504.08207](https://arxiv.org/abs/2504.08207)). For Forecast, **RAG over similar ADRs** is the highest-ROI starting point before fine-tuning.
-
-### 4.3 Risk dimensions (from impact + category)
-
-| Dimension | Forecast triggers | Phase 1 |
-| --------- | ------------------- | ------- |
-| Technical | Integration breakage, migration complexity, tech debt | **Enabled** |
-| Delivery | Timeline slip, cross-team coordination | **Enabled** |
-| People | Training, ownership shift, on-call burden | **Enabled** |
-| Compliance | Audit, regulatory, data residency | **Deferred** — confidential data |
-| Financial | License cost, infra cost, vendor lock-in | **Deferred** — confidential data |
-
-Phase 1 scores only `technical`, `delivery`, and `people` in `impact_map.risk_dimensions`. Compliance and financial forecast triggers are omitted until tenant data-handling and access controls are defined.
-
-Align with Structured MADR per-option risk assessment (technical, schedule, ecosystem).
-
-### 4.4 Confidence bands
-
-Do not emit point probabilities. Use:
-
-| Band | Meaning |
-| ---- | ------- |
-| `high` | ≥2 similar precedents with documented outcomes |
-| `medium` | Impact map strong; limited precedent |
-| `low` | Cold start or sparse graph; template-based only |
-
-Review Portal displays band prominently — not false actuarial precision.
-
-### 4.5 Rollback considerations
-
-Required for `technical` and `hybrid` domains when impact_map.blast_radius_score > 0.5.
-
-Content: what to revert, order, expected recovery time — grounded in similar decision rollback notes or explicit "rollback plan not found in precedents" flag ([Virima rollback planning](https://virima.com/blog/change-risk-assessment-in-it)).
+Full design, schemas, and diagrams: **[09-forecast-engine/README.md](../../09-forecast-engine/README.md)**.
 
 ---
 
@@ -417,7 +359,7 @@ Layer 1 — Rule engine (deterministic, always runs)
   • IF classification.confidence < 0.65 → recommend manual_reclassification (recommended)
 
 Layer 2 — LLM synthesis (optional enrichment)
-  • Input: impact_map + ledger_diff + forecast + rule outputs
+  • Input: impact_map + ledger_diff + rule outputs
   • Output: additional recommended/optional items with rationale
   • MUST NOT override required rule items
   • MUST include evidence_refs for each item
@@ -458,8 +400,8 @@ Insight Aggregator:
 
 | Score | Computation |
 | ----- | ----------- |
-| `completeness_score` | Weighted section presence for profile (full_analysis expects ledger_diff + impact + forecast + recommendations) |
-| `grounding_score` | % claims with valid evidence in ledger_diff, impact, forecast, recommendations |
+| `completeness_score` | Weighted section presence for profile (full_analysis expects ledger_diff + impact + recommendations) |
+| `grounding_score` | % claims with valid evidence in ledger_diff, impact, recommendations |
 | `review_priority` | Base from Classification `routing.priority`; upgrade on `ledger_diff.change_classification: conflicts`, high blast radius, or low grounding |
 
 | Condition | review_priority |
@@ -492,8 +434,9 @@ The graph is the **shared substrate** for Impact and Ledger Diff:
 | ------ | --------- |
 | Ledger Diff | supersedes/conflicts_with edges, shared system overlap for baseline selection |
 | Impact | Multi-hop dependency traversal |
-| Forecast | Precedent outcome paths (Phase 2) |
 | Recommendation | Conflict detection |
+
+Forecast Engine (module 09) reads the same ledger for **discussion precedent** — separate path.
 
 ### 7.2 MVP graph (PostgreSQL)
 
@@ -534,7 +477,6 @@ Do not run full GraphRAG on every decision — 80% of queries need local travers
 | ---------- | -------- |
 | Ledger Diff | Reranker + headline/summary synthesis from structured diff |
 | Impact | Summarize traversal results (optional) |
-| Forecast | Synthesize outcome narratives from structured inputs |
 | Recommendation | Enrich rule output with contextual suggestions |
 
 ### 8.2 Where LLM must NOT be used alone
@@ -557,7 +499,6 @@ DRAFT + SafePassage patterns from module 03 apply here.
 
 | Task | Model tier |
 | ---- | ---------- |
-| Forecast synthesis | Small/fast (Haiku, GPT-4o-mini class) |
 | Recommendation enrichment | Small/fast |
 | Cross-encoder rerank | Dedicated reranker model (no generative LLM) |
 | Complex hybrid decisions | Escalate to larger model (≤5% of jobs) |
@@ -577,7 +518,6 @@ Label **100–200 insight packages** with expert review:
 | Impact accuracy | Correct affected systems (precision/recall vs expert) |
 | Ledger diff accuracy | Correct change_classification + field deltas vs expert |
 | Ledger retrieval relevance | NDCG@5 on primary reference selection |
-| Forecast usefulness | Expert rating 1–5 (not accuracy of prediction) |
 | Recommendation completeness | Required governance items captured |
 | Grounding | % claims with valid evidence |
 
@@ -608,7 +548,6 @@ Adopt decision-based evaluation (DeepEval DAG metric concept): each sub-engine o
 | Orchestrator | In-process DAG |
 | Impact | Entity → static tenant graph (JSON); 2-hop traversal |
 | Ledger Diff | pgvector + category filter; rule-based field diff; no rerank |
-| Forecast | Template + LLM synthesis with grounded_in validation |
 | Recommendation | Rule engine only (10–15 rules) |
 | Graph | PostgreSQL adjacency tables |
 
@@ -618,7 +557,6 @@ Adopt decision-based evaluation (DeepEval DAG metric concept): each sub-engine o
 | --------- | -------------- |
 | Impact | CMDB integration; org mapping pass; risk dimension scoring |
 | Ledger Diff | Hybrid RRF + cross-encoder rerank; structured dimension diff |
-| Forecast | Precedent outcome extraction from ledger metadata |
 | Recommendation | Rules + LLM enrichment |
 | Graph | Neo4j/FalkorDB; incremental merge on ledger write |
 
@@ -628,7 +566,6 @@ Adopt decision-based evaluation (DeepEval DAG metric concept): each sub-engine o
 | --------- | -------------- |
 | Orchestrator | Temporal workflows; re-analysis support |
 | Ledger Diff | Graph edge boost for conflict/supersedes classification |
-| Forecast | Fine-tuned forecast summarizer (DRAFT-style RAG+FT) |
 | Evaluation | Continuous active learning from Review Portal edits |
 
 ---
@@ -640,7 +577,7 @@ Adopt decision-based evaluation (DeepEval DAG metric concept): each sub-engine o
 | 1 | Graph store | PostgreSQL adjacency MVP → graph DB at scale |
 | 2 | Vector DB | pgvector co-located with PostgreSQL |
 | 3 | LLM usage | Synthesis only; retrieval deterministic |
-| 4 | Execution order | DAG: parallel Ledger Diff+Impact → Forecast → Recommendation |
+| 4 | Execution order | DAG: parallel Ledger Diff+Impact → Recommendation; discussions → Forecast Engine (09) |
 | 5 | Conflict handling | Ledger Diff detects; Recommendation requires resolution; Review priority urgent |
 
 ---
@@ -649,11 +586,11 @@ Adopt decision-based evaluation (DeepEval DAG metric concept): each sub-engine o
 
 | Anti-pattern | Correct approach |
 | ------------ | ---------------- |
-| Single LLM prompt for "analyze this decision" | Four sub-engines with grounded retrieval |
+| Single LLM prompt for "analyze this decision" | Three sub-engines with grounded retrieval |
 | Skipping ledger diff on cold start without warning | `first_of_kind` classification + explicit quality warnings |
 | Similarity list without structured diff | Ledger Diff Engine with field-level `changes[]` |
 | Recommendations that auto-execute | Proposals only; Review Portal approves |
-| Forecast as point probability | Likelihood bands + confidence band |
+| Discussion change treated as decision analysis | Route to Forecast Engine (09) |
 | Parallel all sub-engines ignoring dependencies | DAG orchestration |
 | Vector-only ledger retrieval | Hybrid RRF + rerank + structured diff |
 | Impact from LLM guessing | Graph traversal + org mapping |
