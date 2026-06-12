@@ -1,17 +1,52 @@
-import { EdgeLabelRenderer, BaseEdge, getSmoothStepPath, type EdgeProps } from '@xyflow/react'
+import { EdgeLabelRenderer, BaseEdge, getSmoothStepPath, type EdgeProps, Position } from '@xyflow/react'
 
 export interface LabeledEdgeData {
   eventName?: string
-  /** active once the source node has completed */
   active?: boolean
+  centerY?: number
+  centerX?: number
+  labelOffsetY?: number
+  labelOffsetX?: number
+  /** Pin label to explicit canvas coords (avoids ambiguous junction placement) */
+  labelAt?: { x: number; y: number }
+  /** Horizontal runway, then drop into target column */
+  routeY?: number
+}
+
+function buildRunwayPath(
+  sourceX: number, sourceY: number, targetX: number, targetY: number,
+  sourcePosition: Position, targetPosition: Position, routeY: number,
+): string {
+  const pad = 14
+  const sx = sourcePosition === Position.Right ? sourceX + pad : sourceX
+  const tx = targetX
+  const ty = targetPosition === Position.Top ? targetY : targetY
+  return `M ${sourceX},${sourceY} L ${sx},${sourceY} L ${sx},${routeY} L ${tx},${routeY} L ${tx},${ty}`
 }
 
 export function LabeledEdge({
-  id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd,
+  id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd, style,
 }: EdgeProps & { data?: LabeledEdgeData }) {
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 8,
-  })
+  const routeY = data?.routeY
+
+  let edgePath: string
+  let defaultLabelX: number
+  let defaultLabelY: number
+
+  if (routeY != null) {
+    edgePath = buildRunwayPath(sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, routeY)
+    defaultLabelX = (sourceX + targetX) / 2
+    defaultLabelY = routeY
+  } else {
+    ;[edgePath, defaultLabelX, defaultLabelY] = getSmoothStepPath({
+      sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 8,
+      centerY: data?.centerY,
+      centerX: data?.centerX,
+    })
+  }
+
+  const labelX = data?.labelAt?.x ?? defaultLabelX + (data?.labelOffsetX ?? 0)
+  const labelY = data?.labelAt?.y ?? defaultLabelY + (data?.labelOffsetY ?? 0)
   const active = data?.active ?? false
   const stroke = active ? 'var(--accent-processing)' : 'var(--color-border-secondary)'
 
@@ -21,13 +56,12 @@ export function LabeledEdge({
         id={id}
         path={edgePath}
         markerEnd={markerEnd}
-        style={{ stroke, strokeWidth: 1, transition: 'stroke 0.3s' }}
+        style={{ ...style, stroke, strokeWidth: 1.5, transition: 'stroke 0.3s' }}
       />
 
-      {/* Animated SVG Edge — a pulse travels source→target while active */}
       {active && (
-        <circle r={3} fill="var(--accent-processing)">
-          <animateMotion dur="3s" repeatCount="indefinite" path={edgePath} />
+        <circle r={3.5} fill="var(--accent-processing)" style={{ pointerEvents: 'none' }}>
+          <animateMotion dur="2.5s" repeatCount="indefinite" path={edgePath} />
         </circle>
       )}
 
@@ -37,15 +71,18 @@ export function LabeledEdge({
             className="font-mono"
             style={{
               position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY + 11}px)`,
+              zIndex: 1000,
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: 'none',
-              fontSize: 8.5,
-              color: 'var(--color-text-tertiary)',
-              background: 'var(--color-background-canvas)',
-              padding: '0 4px',
+              fontSize: 9.5,
+              fontWeight: 500,
+              color: active ? 'var(--accent-processing)' : 'var(--color-text-secondary)',
+              background: 'var(--color-background-primary)',
+              border: `0.5px solid ${active ? 'var(--accent-processing-border)' : 'var(--color-border-secondary)'}`,
+              borderRadius: 4,
+              padding: '2px 6px',
               whiteSpace: 'nowrap',
-              opacity: active ? 1 : 0.75,
-              transition: 'opacity 0.3s',
+              boxShadow: '0 1px 4px rgba(20,20,19,0.12)',
             }}
           >
             {data.eventName}

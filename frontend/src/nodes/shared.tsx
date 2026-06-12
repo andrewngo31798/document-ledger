@@ -4,8 +4,12 @@ import type { NodeStatus } from '../types/pipeline'
 
 export type Lane = 'intake' | 'processing' | 'output'
 
-/** Fixed height for standard nodes so they fill the lane consistently. */
+/** Fixed dimensions so stacked nodes (e.g. KP → Forecast) align cleanly. */
 export const NODE_HEIGHT = 84
+export const NODE_WIDTH = 204
+
+/** Analysis container — 3 sub-engines in a single row. */
+export const ANALYSIS_WIDTH = 372
 
 /** Shared ReactFlow handle styling for all pipeline nodes. */
 export const handleStyle = { background: 'var(--color-border-secondary)', border: 'none', width: 6, height: 6 } as const
