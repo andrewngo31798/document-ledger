@@ -87,11 +87,11 @@ Job messages routed to the appropriate downstream consumer (e.g. Knowledge Proce
 
 ### One-liner
 
-This is where conversations, documents, and tickets stop being raw content and start becoming organizational knowledge — with routing to the **decision path** or **discussion path**.
+This is where conversations, documents, and tickets stop being raw content and start becoming structured decision knowledge — with routing to the **decision path** or **discussion path**.
 
 ### Why
 
-Organizational knowledge is buried inside unstructured content. The system must first understand what is being discussed, whether a decision was made, and whether the content is a shifting discussion worth tracking before any analysis runs.
+Important decisions are often buried inside unstructured content. The system must first understand what is being discussed, whether a decision was made, and whether the content is a shifting discussion worth tracking before any analysis runs.
 
 ### What it does
 
@@ -116,7 +116,7 @@ Structured knowledge + `source.ingested` event → **Classification Engine** (de
 
 ### One-liner
 
-The Classification Engine identifies the type of decision and applies a standardized taxonomy so downstream analysis runs consistently.
+The Classification Engine categorizes decisions using a standardized taxonomy so downstream analysis runs consistently.
 
 ### Why
 
@@ -126,7 +126,7 @@ The system must know *what kind* of decision it is before it can analyze it. A p
 
 - Identifies decision type from structured knowledge
 - Applies taxonomy tags from the organization's decision taxonomy
-- Scores confidence so downstream stages know how reliable the classification is
+- Assigns a confidence score to its classification so downstream stages know how reliable the labeling is
 - Routes to Analysis Engine with enabled sub-engines: ledger diff, impact, recommendation
 
 ### Output
@@ -139,11 +139,11 @@ Classified decision + `decision.classified` event → **Analysis Engine**
 
 ### One-liner
 
-The Forecast Engine captures **change** in ongoing discussions and answers **"have we seen this before?"** — without requiring a closed decision.
+The Forecast Engine tracks how discussions evolve over time and answers **"have we seen this before?"** — without requiring a closed decision.
 
 ### Why
 
-Most organizational content is not a decision candidate. Confluence threads, design debates, and early-position language still matter. Teams lose track of shifts until someone asks "didn't we already decide this?" Forecast Engine surfaces change early, grounded in the Decision Ledger.
+Most organizational content is not a decision candidate. Confluence threads, design debates, and early-position language still matter. Teams lose track of shifts until someone asks "didn't we already decide this?" Forecast Engine surfaces evolving discussions before decisions are finalized, grounded in the Decision Ledger.
 
 ### Questions it answers
 
@@ -151,14 +151,14 @@ Most organizational content is not a decision candidate. Confluence threads, des
 | -------- | ----------- |
 | What's shifting in this thread? | Change Detector |
 | Have we seen this before? | Precedent Engine |
-| What might happen next? | Forward Projector (optional) |
+| What outcomes have similar situations led to in the past? | Forward Projector (optional) |
 
 ### What it does
 
 - **Change Detector** — detects emerging, reversing, or stable shifts vs baseline
 - **Precedent Engine** — hybrid retrieval against approved ledger records
 - **Forward Projector** — optional grounded forward signals from precedent only
-- Publishes advisory `change_preview` — not approved organizational truth
+- Publishes non-approved change insights (`change_preview`)
 
 ### Output
 
@@ -170,7 +170,7 @@ Most organizational content is not a decision candidate. Confluence threads, des
 
 ### One-liner
 
-The Analysis Engine is the intelligence layer for **decisions**. It compares a new decision against approved knowledge, explains what changed, evaluates impact, and prepares a complete insight package for human review.
+The Analysis Engine is the decision analysis layer for **decisions**. It compares a new decision against approved knowledge, identifies what changed, assesses potential impact, and prepares a complete insight package for human review.
 
 ### Why
 
@@ -182,13 +182,13 @@ A decision only has meaning when compared to the organization's current state. R
 | -------- | ----------- |
 | What changed? | Ledger Diff Engine |
 | What is affected? | Impact Engine |
-| What should we do next? | Recommendation Engine |
+| What actions should be considered next? | Recommendation Engine |
 
 ### What it does
 
 - **Ledger Diff** — Determines what changed vs. the approved Decision Ledger
-- **Impact** — Maps dependencies and affected areas
-- **Recommendation** — Suggests next actions and governance steps
+- **Impact** — Maps potentially affected teams, systems, and decisions
+- **Recommendation** — Provides recommended next actions and governance steps
 - Orchestrates three sub-engines into a single review-ready package
 
 > Forecast is **not** part of Analysis. Discussion change capture lives in [Forecast Engine (Module 09)](../architecture/modules/09-forecast-engine/README.md).
@@ -203,11 +203,11 @@ A decision only has meaning when compared to the organization's current state. R
 
 ### One-liner
 
-The Review & Approval Portal is the trust boundary. It ensures AI-generated insights are validated by humans before they become part of the organization's source of truth.
+The Review & Approval Portal is the human validation boundary. It ensures AI-generated insights are validated by humans before they become part of the organization's governed decision record.
 
 ### Why
 
-AI can propose decisions, but only humans can establish organizational truth. Document Ledger does **not** automatically write everything into the ledger.
+AI can prepare analysis and recommendations, but only humans can approve organizational decisions. Document Ledger does **not** automatically write everything into the ledger.
 
 ### What it does
 
@@ -225,15 +225,15 @@ Approved or rejected decision + `decision.approved` event → **Decision Ledger*
 
 ### One-liner
 
-The Decision Ledger is the trusted memory of the organization. It preserves approved decisions, maintains history and traceability, and transforms them into both system-ready data and AI-ready knowledge.
+The Decision Ledger is the approved record of organizational decisions. It preserves approved decisions, maintains history and traceability, and transforms them into both system-ready data and AI-ready knowledge.
 
 ### Why
 
-Organizations need a single approved record of decisions — with evidence, versioning, and audit trail. The Forecast Engine's Precedent Engine retrieves from here; Consumer API serves authoritative answers from here.
+Organizations need a single approved record of decisions — with evidence, versioning, and audit trail. The Forecast Engine's Precedent Engine retrieves from here; Consumer API serves approved decision records from here.
 
 ### What it does
 
-- Preserves approved decisions as the source of truth
+- Preserves approved decisions as the organization's governed decision record
 - Maintains decision history and versioning
 - Links evidence and maintains audit traceability
 - Indexes knowledge for search, reporting, and AI consumption
@@ -248,24 +248,24 @@ Ledger records → **Consumer API**
 
 ### One-liner
 
-This is where Document Ledger becomes useful beyond the portal — approved decisions and advisory change previews power search, dashboards, agents, and future AI systems through a trusted API.
+This is where Document Ledger becomes useful beyond the portal — approved decisions and non-approved change insights power search, dashboards, agents, and future AI systems through a governed API.
 
 ### Why
 
-Trusted knowledge has no value if downstream systems cannot safely consume it. The Consumer API is the controlled exit with two trust tiers: **authoritative** (ledger) and **advisory** (change previews).
+Governed decision knowledge has no value if downstream systems cannot safely consume it. The Consumer API is the controlled exit with two trust tiers: **approved** (ledger) and **non-approved** (change insights).
 
 ### What it does
 
 | Capability | Source | Trust tier |
 | ---------- | ------ | ---------- |
-| Search / retrieve decisions | Decision Ledger | Authoritative |
-| RAG context for agents | Decision Ledger | Authoritative |
-| Change previews | Forecast Engine | Advisory |
-| "Have we seen this before?" | Precedent query | Advisory (ledger-grounded) |
+| Search / retrieve decisions | Decision Ledger | Approved |
+| RAG context for agents | Decision Ledger | Approved |
+| Change insights | Forecast Engine | Non-approved |
+| "Have we seen this before?" | Precedent query | Non-approved (ledger-grounded) |
 
 ### Output
 
-Decision knowledge and change preview API responses → AI systems, search, agents, RAG, and internal tools
+Decision knowledge and change insight API responses → AI systems, search, agents, RAG, and internal tools
 
 ---
 
@@ -292,16 +292,16 @@ Decision knowledge and change preview API responses → AI systems, search, agen
 3. **Knowledge Processing** — Decision candidate detected → decision path.
 4. **Classification** — Taxonomy + confidence.
 5. **Analysis** — Ledger diff, impact, recommendations (3 sub-engines).
-6. **Review Portal** — Human trust boundary.
-7. **Decision Ledger** — Approved truth.
-8. **Consumer API** — Verified answer with evidence.
+6. **Review Portal** — Human validation boundary.
+7. **Decision Ledger** — Approved organizational decision.
+8. **Consumer API** — Approved decision with evidence.
 
 ### Discussion path (Confluence page — ~5 minutes)
 
 1. **Signal Intake** — Confluence page updated.
 2. **Knowledge Processing** — Discussion signal, no decision candidate → discussion path.
 3. **Forecast Engine** — Change detector → precedent ("seen ADR-007 before") → forward signals.
-4. **Consumer API** — Advisory precedent Q&A; not approved truth.
+4. **Consumer API** — Non-approved precedent Q&A; not an approved decision record.
 
 ---
 
