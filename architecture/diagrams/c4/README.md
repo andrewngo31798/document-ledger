@@ -9,6 +9,7 @@ Version-controlled C4 diagrams aligned with [System Architecture](../../overview
 | **Context (L1)** | [c4-context.mmd](c4-context.mmd) | Document Ledger in its environment: users, external sources, downstream AI consumers |
 | **Container (L2)** | [c4-container.mmd](c4-container.mmd) | Deployable containers, data stores, and async event flow across the 8 pipeline modules |
 | **Component (L3)** | [c4-component-analysis-engine.mmd](c4-component-analysis-engine.mmd) | Internal components of the Analysis Engine and its four sub-engines |
+| **Analysis detail (L3+)** | [../../modules/05-analysis-engine/diagrams/README.md](../../modules/05-analysis-engine/diagrams/README.md) | Internal architecture, AI layer, DAG, grounding pipeline |
 
 ## Rendered exports
 

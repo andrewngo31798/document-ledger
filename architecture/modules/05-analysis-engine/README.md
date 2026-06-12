@@ -2,7 +2,7 @@
 
 Module **05** in the Document Ledger pipeline. The core intelligence layer — answers **what changes compared to the current Decision Ledger**, then produces a grounded **insight package** for human review by orchestrating four analysis sub-engines.
 
-Related docs: [System Architecture](../../overview/architecture.md) · [Responsibility Matrix](../../overview/module-responsibility-matrix.md) · [Classification Engine](../04-classification/) · [Review & Approval Portal](../06-review-portal/) · [Deep research](research/analysis-engine-deep-research.md)
+Related docs: [System Architecture](../../overview/architecture.md) · [Responsibility Matrix](../../overview/module-responsibility-matrix.md) · [Classification Engine](../04-classification/) · [Review & Approval Portal](../06-review-portal/) · [Deep research](research/analysis-engine-deep-research.md) · [Architecture diagrams](diagrams/README.md)
 
 ---
 
@@ -95,6 +95,8 @@ Phase 3 (sequential): Recommendation Engine ← requires Ledger Diff + Impact + 
 ```
 
 Classification Engine's `routing.sub_engines` can **skip** sub-engines per profile, but cannot violate dependencies (Forecast requires Impact when enabled; Recommendation requires all enabled upstream outputs).
+
+Detailed diagrams: [internal architecture](diagrams/analysis-internal-architecture.mmd) · [AI layer](diagrams/analysis-ai-layer.mmd) · [sub-engine DAG](diagrams/analysis-subengine-dag.mmd) · [grounding pipeline](diagrams/analysis-grounding-pipeline.mmd)
 
 ---
 
@@ -323,5 +325,10 @@ architecture/modules/05-analysis-engine/
 ├── events/
 │   └── insight.ready.schema.json
 └── diagrams/
-    └── analysis-orchestration.mmd
+    ├── README.md                      ← diagram index + AI layer design notes
+    ├── analysis-orchestration.mmd     ← pipeline overview
+    ├── analysis-internal-architecture.mmd
+    ├── analysis-ai-layer.mmd
+    ├── analysis-subengine-dag.mmd
+    └── analysis-grounding-pipeline.mmd
 ```

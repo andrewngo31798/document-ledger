@@ -1,0 +1,90 @@
+flowchart TB
+    subgraph external [External dependencies]
+        queueIn["Queue / Event Bus<br/>decision.classified"]
+        queueOut["Queue / Event Bus<br/>insight.ready"]
+        kpe[(Knowledge Processing<br/>knowledge_records, chunks,<br/>extracted_entities, candidates)]
+        classDb[(Classification<br/>classified_decisions)]
+        ledger[(Decision Ledger<br/>read-only)]
+        vector[(Vector DB / pgvector)]
+        graph[(Decision Knowledge Graph<br/>graph_nodes, graph_edges)]
+        review[Review & Approval Portal]
+    end
+
+    subgraph ingress [Ingress layer]
+        consumer[Job Consumer<br/>idempotent on classified_decision_id]
+        loader[Context Loader<br/>join KPE + classification + routing]
+    end
+
+    subgraph orchestration [Orchestration layer]
+        orchestrator[Analysis Orchestrator<br/>DAG executor, timeouts, retries]
+        router[Profile Router<br/>resolve sub_engines from analysis_profile]
+    end
+
+    subgraph phase1 [Phase 1 — parallel sub-engines]
+        subgraph lde [Ledger Diff Engine]
+            lde1[Stage 1: Hybrid retrieval<br/>vector + BM25 + graph]
+            lde2[Stage 2: Fusion + rerank<br/>RRF → cross-encoder]
+            lde3[Stage 3: Primary reference selection]
+            lde4[Stage 4: Structured field diff<br/>8 dimensions]
+            lde5[Stage 5: Change classification]
+            lde1 --> lde2 --> lde3 --> lde4 --> lde5
+        end
+
+        subgraph ie [Impact Engine]
+            ie1[Pass 1: Seed identification<br/>entities → graph nodes]
+            ie2[Pass 2: Graph traversal<br/>2–3 hops depends_on / owned_by]
+            ie3[Pass 3: Org mapping + risk scoring<br/>technical, delivery, people]
+            ie1 --> ie2 --> ie3
+        end
+    end
+
+    subgraph phase2 [Phase 2 — sequential]
+        fe[Forecast Engine<br/>precedent patterns + templates<br/>→ predicted_outcomes]
+    end
+
+    subgraph phase3 [Phase 3 — sequential]
+        re[Recommendation Engine<br/>Layer 1: rule engine<br/>Layer 2: LLM enrichment]
+    end
+
+    subgraph egress [Egress layer]
+        aggregator[Insight Aggregator<br/>merge + JSON schema validate]
+        quality[Quality Scorer<br/>completeness, grounding, review_priority]
+        writer[Insight Store Writer<br/>insight_packages JSONB]
+        publisher[Event Publisher<br/>insight.ready summary payload]
+        audit[Audit Logger<br/>timings, queries, LLM calls]
+    end
+
+    queueIn --> consumer
+    consumer --> loader
+    kpe --> loader
+    classDb --> loader
+    loader --> orchestrator
+    orchestrator --> router
+
+    router --> lde
+    router --> ie
+    vector --> lde1
+    ledger --> lde1
+    graph --> lde1
+    graph --> ie2
+    kpe --> ie1
+
+    lde5 --> fe
+    ie3 --> fe
+    loader --> fe
+
+    lde5 --> re
+    ie3 --> re
+    fe --> re
+
+    lde5 --> aggregator
+    ie3 --> aggregator
+    fe --> aggregator
+    re --> aggregator
+
+    aggregator --> quality
+    quality --> writer
+    writer --> publisher
+    publisher --> queueOut
+    queueOut --> review
+    orchestrator --> audit

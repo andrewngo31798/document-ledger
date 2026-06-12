@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant SE as Sub-engine
+    participant DET as Deterministic stage
+    participant LLM as LLM synthesizer
+    participant VAL as Grounding verifier
+    participant AGG as Insight Aggregator
+    participant QS as Quality Scorer
+    participant RP as Review Portal
+
+    SE->>DET: Retrieve / traverse / diff / score
+    DET-->>SE: Structured facts + evidence refs
+
+    alt LLM synthesis enabled for this stage
+        SE->>LLM: Prompt with facts only (JSON schema mode)
+        LLM-->>SE: Draft claims + grounded_in / evidence_refs
+        SE->>VAL: Verify each claim
+        VAL-->>SE: Pass or drop claim
+        Note over VAL: Fail closed — ungrounded claims removed
+    else Deterministic only (rules, field diff, graph)
+        SE-->>AGG: Output with built-in evidence
+    end
+
+    SE->>AGG: Validated section payload
+    AGG->>AGG: JSON schema validate insight-package
+    AGG->>QS: Compute completeness_score
+    QS->>QS: Compute grounding_score (% claims with evidence)
+    QS->>QS: Set review_priority from diff class + blast radius
+    AGG->>RP: insight.ready + stored package by ID
