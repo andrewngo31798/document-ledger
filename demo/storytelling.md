@@ -144,9 +144,9 @@ The payoff. Show it quickly but let the contrast land.
 The approved decision enters the ledger: versioned, timestamped, evidence-linked, immutable.
 
 Then the Consumer API. A RAG query comes in:
-*"Why did we choose Postgres over DynamoDB?"*
+*"Has our team officially verified the database decision — who approved it and what evidence backs it?"*
 
-The API returns the ledger entry — the decision-maker, the date, the tradeoff, the approval.
+The API returns the ledger entry — the approver, the approval date, the evidence links.
 Not a summary. Not a generated answer. The verified record.
 
 > "Your AI assistant isn't guessing anymore. It's drawing from knowledge your team has

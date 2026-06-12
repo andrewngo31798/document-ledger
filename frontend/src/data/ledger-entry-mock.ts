@@ -1,7 +1,7 @@
 import type { LedgerEntry } from '../types/pipeline'
 
 export const ledgerEntryMock: LedgerEntry = {
-  ledger_id: 'ldg_20241115_001',
+  id: 'ldg_20241115_001',
   decision_summary:
     'Choose PostgreSQL over DynamoDB as the primary data store for the Decision Ledger module.',
   domain: 'technical',

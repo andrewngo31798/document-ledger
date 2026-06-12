@@ -22,10 +22,10 @@ export async function runSignalIntake(config: RunConfig): Promise<SignalIntakeOu
   }
 }
 
-export async function runEventBus(_jobId: string): Promise<{ message: string; routing: string }> {
+export async function runEventBus(_jobId: string): Promise<{ event_type: string; routing: string }> {
   await delay(500)
   return {
-    message: 'source.triggered',
+    event_type: 'source.triggered',
     routing: 'knowledge-processing-queue',
   }
 }
@@ -34,7 +34,7 @@ export async function runKnowledgeProcessing(_payloadRef: string): Promise<Knowl
   await delay(1200)
   return {
     knowledge_id: `kn_${Date.now()}`,
-    decision_candidates: 1,
+    decision_candidate_count: 1,
     entities_extracted: ['PostgreSQL', 'DynamoDB', 'Decision Ledger', 'Sarah Okonkwo', 'Marcus Chen'],
     decision_signal: 'explicit_decision',
   }
@@ -44,10 +44,18 @@ export async function runClassification(_knowledgeId: string): Promise<Classific
   await delay(800)
   return {
     classified_decision_id: insightPackageMock.classified_decision_id,
-    domain: 'technical',
-    categories: ['data_storage', 'architecture'],
-    confidence: 0.91,
-    analysis_profile: 'full_analysis',
+    knowledge_id: insightPackageMock.knowledge_id!,
+    decision_candidate_id: insightPackageMock.decision_candidate_id!,
+    classification: {
+      domain: 'technical',
+      categories: ['data_storage', 'architecture'],
+      confidence: 0.91,
+      method: 'hybrid',
+    },
+    routing: {
+      analysis_profile: 'full_analysis',
+      sub_engines: ['ledger_diff', 'impact', 'forecast', 'recommendation'],
+    },
   }
 }
 
@@ -78,9 +86,9 @@ export async function runConsumerApi(_ledgerId: string): Promise<{
 }> {
   await delay(800)
   return {
-    query: 'Why did we choose Postgres over DynamoDB?',
+    query: 'Has our team officially verified the database decision — who approved it and what evidence backs it?',
     answer:
-      'PostgreSQL was chosen over DynamoDB for the Decision Ledger because the audit trail queries require relational joins across decisions, evidence links, and reviewer history. DynamoDB would require re-implementing relational logic in application code. Postgres JSONB support also eliminates the need for a separate document store. Load testing confirmed p99 latency under 50ms at 10× projected volume. The team already operates Postgres for the auth service, reducing operational overhead. Decision approved by Sarah Okonkwo on 2024-11-15.',
-    source_ledger_id: ledgerEntryMock.ledger_id,
+      'Yes — this is an approved Decision Ledger record (version 1). Approved by Sarah Okonkwo on 2024-11-15. Evidence: confluence://ADR-007, jira://KL-142 (spike), meeting://2024-11-14-arch-review. Decision: PostgreSQL over DynamoDB as the primary data store for the Decision Ledger module. This answer is drawn from a verified, immutable ledger entry — not search results or an AI-generated summary.',
+    source_ledger_id: ledgerEntryMock.id,
   }
 }

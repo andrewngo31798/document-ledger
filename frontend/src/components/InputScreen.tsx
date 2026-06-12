@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { IconMicrophone, IconFileText, IconTicket, IconCursorText, type Icon } from '@tabler/icons-react'
 import { usePipelineStore } from '../store/pipeline.store'
+import { useDemoNarration } from '../hooks/useDemoNarration'
+import { DemoNarrationPanel } from './DemoNarrationPanel'
 import { transcriptMock } from '../data/transcript-mock'
 import { confluenceMock } from '../data/confluence-mock'
 
@@ -24,6 +26,7 @@ const CARDS: CardDef[] = [
 export function InputScreen() {
   const [selected, setSelected] = useState<CardKey>('transcript')
   const startRun = usePipelineStore((s) => s.startRun)
+  const beat = useDemoNarration()
 
   function start() {
     if (selected === 'confluence') {
@@ -39,7 +42,7 @@ export function InputScreen() {
       {/* Header */}
       <div className="text-center">
         <h1 style={{ fontSize: 28, fontWeight: 600, color: 'var(--color-text-primary)', letterSpacing: '-0.5px' }}>
-          Knowledge Ledger
+          Document Ledger
         </h1>
         <p className="prose" style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginTop: 8 }}>
           Choose where a decision begins. Watch it move from raw signal to verified knowledge.
@@ -85,6 +88,8 @@ export function InputScreen() {
           )
         })}
       </div>
+
+      <DemoNarrationPanel beat={beat} variant="input" />
 
       {/* Start */}
       <button

@@ -40,7 +40,7 @@ export function ReviewPortalNode({ data }: { data: { status: NodeStatus } }) {
         <IconUserCheck size={14} stroke={1.7} color={accent} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)' }}>Review Portal</div>
-          <div style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>Trust boundary</div>
+          <div style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>Human review & approval</div>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ export function ReviewPortalNode({ data }: { data: { status: NodeStatus } }) {
         <div className="fade-in" style={{ marginTop: 10 }}>
           {insight && (
             <div className="prose" style={{ fontSize: 11, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 8 }}>
-              {insight.decision_summary}
+              {insight.decision_summary.text}
             </div>
           )}
           <textarea

@@ -29,7 +29,7 @@ export async function runSignalIntake(config: RunConfig): Promise<SignalIntakeOu
   return post('/api/signals', { input_type: config.inputType, content: config.content, label: config.inputLabel })
 }
 
-export async function runEventBus(jobId: string): Promise<{ message: string; routing: string }> {
+export async function runEventBus(jobId: string): Promise<{ event_type: string; routing: string }> {
   return get(`/api/signals/${jobId}/status`)
 }
 
@@ -62,5 +62,8 @@ export async function runConsumerApi(ledgerId: string): Promise<{
   answer: string
   source_ledger_id: string
 }> {
-  return post('/api/query', { ledger_id: ledgerId, query: 'Why did we choose Postgres over DynamoDB?' })
+  return post('/api/query', {
+    ledger_id: ledgerId,
+    query: 'Has our team officially verified the database decision — who approved it and what evidence backs it?',
+  })
 }

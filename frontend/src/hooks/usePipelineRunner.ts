@@ -1,7 +1,6 @@
 import { useCallback } from 'react'
-import { usePipelineStore, STAGE_AFTER } from '../store/pipeline.store'
+import { usePipelineStore } from '../store/pipeline.store'
 import { pipelineService } from '../services/pipeline.service'
-import type { PipelineStage } from '../types/pipeline'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -11,8 +10,6 @@ export function usePipelineRunner() {
   const advanceStage = useCallback(async () => {
     const { activeStage, runConfig, stageOutputs } = usePipelineStore.getState()
     if (!activeStage || !runConfig) return
-
-    const set = usePipelineStore.getState
 
     store.setNodeStatus(activeStage, 'processing')
 
@@ -102,8 +99,8 @@ export function usePipelineRunner() {
           break
         }
         case 'consumer-api': {
-          const ledger = stageOutputs['decision-ledger'] as { ledger_id: string } | undefined
-          const out = await pipelineService.runConsumerApi(ledger?.ledger_id ?? '')
+          const ledger = stageOutputs['decision-ledger'] as { id: string } | undefined
+          const out = await pipelineService.runConsumerApi(ledger?.id ?? '')
           store.setStageOutput('consumer-api', out)
           store.setNodeStatus('consumer-api', 'complete')
           store.setActiveStage(null)

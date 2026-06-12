@@ -17,12 +17,15 @@ import {
 
 import { usePipelineStore } from '../store/pipeline.store'
 import { usePipelineRunner } from '../hooks/usePipelineRunner'
+import { useDemoNarration } from '../hooks/useDemoNarration'
+import { DemoNarrationPanel } from './DemoNarrationPanel'
 import { StandardNode, type Lane } from '../nodes/StandardNode'
 import { AnalysisEngineNode } from '../nodes/AnalysisEngineNode'
 import { ReviewPortalNode } from '../nodes/ReviewPortalNode'
 import { LaneNode } from '../nodes/LaneNode'
 import { LabeledEdge } from './EdgeLabel'
 import { DetailPanel } from './DetailPanel'
+import { STAGE_LABEL } from '../data/module-labels'
 import type { PipelineStage } from '../types/pipeline'
 
 const nodeTypes = {
@@ -33,18 +36,6 @@ const nodeTypes = {
 }
 const edgeTypes = { labeled: LabeledEdge }
 
-const STAGE_LABEL: Record<PipelineStage, string> = {
-  input: 'Input',
-  'signal-intake': 'Signal Intake',
-  'event-bus': 'Event Bus',
-  'knowledge-processing': 'Knowledge Processing',
-  classification: 'Classification',
-  'analysis-engine': 'Analysis Engine',
-  'review-portal': 'Review Portal',
-  'decision-ledger': 'Decision Ledger',
-  'consumer-api': 'Consumer API',
-}
-
 const RUN_STAGES: PipelineStage[] = [
   'signal-intake', 'event-bus', 'knowledge-processing', 'classification',
   'analysis-engine', 'review-portal', 'decision-ledger', 'consumer-api',
@@ -53,12 +44,12 @@ const RUN_STAGES: PipelineStage[] = [
 // Static node definitions (positions + lane + icon). Snake layout for clean cross-lane drops.
 interface StdDef { id: PipelineStage; label: string; subtitle: string; lane: Lane; icon: Icon; x: number; y: number }
 const STD_NODES: StdDef[] = [
-  { id: 'signal-intake', label: 'Signal Intake', subtitle: 'Validates trigger', lane: 'intake', icon: IconAntenna, x: 40, y: 30 },
-  { id: 'event-bus', label: 'Event Bus', subtitle: 'Async routing', lane: 'intake', icon: IconTopologyStar, x: 380, y: 30 },
-  { id: 'knowledge-processing', label: 'Knowledge Processing', subtitle: 'Extract & detect', lane: 'processing', icon: IconBrain, x: 380, y: 243 },
-  { id: 'classification', label: 'Classification', subtitle: 'Domain & confidence', lane: 'processing', icon: IconTags, x: 720, y: 243 },
-  { id: 'decision-ledger', label: 'Decision Ledger', subtitle: 'Versioned record', lane: 'output', icon: IconDatabase, x: 1420, y: 500 },
-  { id: 'consumer-api', label: 'Consumer API', subtitle: 'RAG & agents', lane: 'output', icon: IconApi, x: 1720, y: 500 },
+  { id: 'signal-intake', label: 'Signal Intake', subtitle: 'Receive & validate trigger', lane: 'intake', icon: IconAntenna, x: 40, y: 30 },
+  { id: 'event-bus', label: 'Queue', subtitle: 'Async event routing', lane: 'intake', icon: IconTopologyStar, x: 380, y: 30 },
+  { id: 'knowledge-processing', label: 'Knowledge Processing', subtitle: 'Fetch, extract & detect', lane: 'processing', icon: IconBrain, x: 380, y: 243 },
+  { id: 'classification', label: 'Classification', subtitle: 'Domain, confidence & routing', lane: 'processing', icon: IconTags, x: 720, y: 243 },
+  { id: 'decision-ledger', label: 'Decision Ledger', subtitle: 'Approved records & audit trail', lane: 'output', icon: IconDatabase, x: 1420, y: 500 },
+  { id: 'consumer-api', label: 'Consumer API', subtitle: 'Search, RAG & agents', lane: 'output', icon: IconApi, x: 1720, y: 500 },
 ]
 const ANALYSIS_POS = { x: 1040, y: 185 }
 const REVIEW_POS = { x: 1420, y: 185 }
@@ -81,7 +72,7 @@ const LANE_NODES: Node[] = LANES.map((l) => ({
 interface EdgeDef { source: PipelineStage; target: PipelineStage; sh: string; th: string; label?: string }
 const EDGE_DEFS: EdgeDef[] = [
   { source: 'signal-intake', target: 'event-bus', sh: 'r', th: 'l', label: 'source.triggered' },
-  { source: 'event-bus', target: 'knowledge-processing', sh: 'b', th: 't' },
+  { source: 'event-bus', target: 'knowledge-processing', sh: 'b', th: 't', label: 'source.triggered' },
   { source: 'knowledge-processing', target: 'classification', sh: 'r', th: 'l', label: 'source.ingested' },
   { source: 'classification', target: 'analysis-engine', sh: 'r', th: 'l', label: 'decision.classified' },
   { source: 'analysis-engine', target: 'review-portal', sh: 'r', th: 'l', label: 'insight.ready' },
@@ -99,6 +90,7 @@ function PipelineFlowInner() {
 
   const { advanceStage } = usePipelineRunner()
   const { fitView } = useReactFlow()
+  const beat = useDemoNarration()
   const [selectedStage, setSelectedStage] = useState<PipelineStage | null>(null)
   const [isRunning, setIsRunning] = useState(false)
 
@@ -117,7 +109,7 @@ function PipelineFlowInner() {
     if (!activeStage) return
     if (activeStage === 'review-portal') return // human pause — resumes after Approve
     if (activeStatus !== 'idle') return
-    const t = setTimeout(() => advanceRef.current(), 650)
+    const t = setTimeout(() => advanceRef.current(), 3000)
     return () => clearTimeout(t)
   }, [isRunning, activeStage, activeStatus])
 
@@ -186,7 +178,7 @@ function PipelineFlowInner() {
       <div style={{ padding: '16px 22px 12px', borderBottom: '0.5px solid var(--color-border-secondary)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Knowledge Ledger</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>Document Ledger</h1>
             <p className="prose" style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 2 }}>
               Watch a decision move from raw signal to verified knowledge.
             </p>
@@ -218,6 +210,8 @@ function PipelineFlowInner() {
           )}
         </div>
       </div>
+
+      <DemoNarrationPanel beat={beat} variant="pipeline" />
 
       {/* Canvas */}
       <div style={{ flex: 1, position: 'relative' }}>

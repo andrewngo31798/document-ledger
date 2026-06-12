@@ -12,9 +12,9 @@ interface SubDef {
 }
 
 const SUBS: SubDef[] = [
-  { key: 'ledger-diff', title: 'Ledger Diff', desc: 'Diff vs approved ledger' },
-  { key: 'impact', title: 'Impact Engine', desc: 'Blast radius + systems' },
-  { key: 'forecast', title: 'Forecast', desc: 'Outcome prediction', dep: '← after Impact' },
+  { key: 'ledger-diff', title: 'Ledger Diff', desc: 'Diff vs Decision Ledger' },
+  { key: 'impact', title: 'Impact', desc: 'Blast radius + systems' },
+  { key: 'forecast', title: 'Forecast', desc: 'Outcome prediction', dep: '← after Ledger Diff + Impact' },
   { key: 'recommendation', title: 'Recommendation', desc: 'Governance next-steps', dep: '← after Forecast' },
 ]
 
@@ -60,8 +60,8 @@ export function AnalysisEngineNode() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px' }}>
         <IconCircuitDiode size={15} stroke={1.7} color="var(--accent-processing)" />
         <div>
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)' }}>Analysis Engine</div>
-          <div style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>Orchestrates four sub-engines</div>
+          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)' }}>Analysis</div>
+          <div style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>Ledger diff · impact · forecast · recommend</div>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
-# Document Ledger — Org Onboarding (Phase 1)
+# Document Ledger — Onboarding (Phase 1)
 
-Checklist and guide for bringing Document Ledger into an organization at the first stage. This reflects the **intended Day 1 setup** from the architecture specs.
+Checklist and guide for bringing Document Ledger into an team at the first stage. This reflects the **intended Day 1 setup** from the architecture specs.
 
 > **Note:** The repo is architecture-first today — `demo/` is not yet a deployable product. Use this document as the rollout playbook when implementation lands.
 
@@ -14,9 +14,9 @@ Document Ledger is not plug-and-play on day one. Four foundations must exist bef
 
 | Foundation | What it provides |
 | ---------- | ---------------- |
-| **Tenant + access** | Org identity, who can trigger processing and who can review |
+| **Tenant + access** | Team identity, who can trigger processing and who can review |
 | **Source connections** | How signals enter (Jira, Confluence, meetings, manual) |
-| **Org context files** | Gazetteers and service catalog so extraction and impact are not blind |
+| **Team context files** | Gazetteers and service catalog so extraction and impact are not blind |
 | **Human review loop** | Reviewers who approve the first baseline decisions into the ledger |
 
 Until approved decisions exist, the system runs in **cold start** mode: analysis works, but ledger diff is mostly `first_of_kind` and impact relies on entities rather than a rich dependency graph.
@@ -42,7 +42,7 @@ Until approved decisions exist, the system runs in **cold start** mode: analysis
 
 ### 1. Create the tenant
 
-- Register one organization as one `tenant_id` (or multiple tenants if operating as a platform).
+- Register one team/org as one `tenant_id` (or multiple tenants if operating as a platform).
 - Configure tenant-scoped auth: reviewers, admins, API users.
 - Store source credentials in a **tenant secret store** — never shared across tenants.
 - All downstream queries and records are scoped by `tenant_id`.
@@ -92,7 +92,7 @@ Signal Intake supports these trigger types:
 
 ---
 
-### 3. Load org-specific context
+### 3. Load team-specific context
 
 Phase 1 does not assume a mature CMDB. Manually seed two JSON artifacts per tenant.
 
@@ -264,11 +264,11 @@ Each human approval:
 
 ## Summary
 
-At first stage you are not turning on AI over your org. You are:
+At first stage you are not turning on AI over your team. You are:
 
 1. **Connecting sources** so decisions can be detected
 2. **Teaching the system your vocabulary** (gazetteers + catalog)
 3. **Putting humans in the loop** to approve the first trusted baseline
 4. **Letting the ledger and graph compound** from those approvals
 
-The system is useful on day one (detect, classify, propose insights) but **trustworthy only after** your org has approved its first decisions into the ledger.
+The system is useful on day one (detect, classify, propose insights) but **trustworthy only after** your team has approved its first decisions into the ledger.

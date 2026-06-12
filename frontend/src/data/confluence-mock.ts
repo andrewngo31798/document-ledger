@@ -10,7 +10,7 @@ export const confluenceMock = {
 Accepted
 
 ## Context
-The Knowledge Ledger system requires a persistent store for approved decision records,
+The Document Ledger system requires a persistent store for approved decision records,
 evidence links, reviewer history, and audit trails. Two candidates were evaluated:
 Amazon DynamoDB and PostgreSQL (RDS).
 
