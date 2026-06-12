@@ -35,9 +35,11 @@ interface PipelineStore {
   detailPanelFocus: DetailPanelFocus | null
   reviewDecision: 'pending' | 'approved' | 'rejected'
   reviewRationale: string
+  autoRunEnabled: boolean
 
   startRun: (config: RunConfig) => void
   resetRun: () => void
+  setAutoRunEnabled: (enabled: boolean) => void
   setNodeStatus: (stage: PipelineStage, status: NodeStatus) => void
   setSubEngineStatus: (engine: keyof SubEngineStatus, status: NodeStatus) => void
   setStageOutput: (stage: keyof PipelineStageResult, output: PipelineStageResult[keyof PipelineStageResult]) => void
@@ -83,6 +85,7 @@ export const usePipelineStore = create<PipelineStore>((set) => ({
   detailPanelFocus: null,
   reviewDecision: 'pending',
   reviewRationale: '',
+  autoRunEnabled: false,
 
   startRun: (config) =>
     set({
@@ -97,6 +100,7 @@ export const usePipelineStore = create<PipelineStore>((set) => ({
       detailPanelFocus: null,
       reviewDecision: 'pending',
       reviewRationale: '',
+      autoRunEnabled: false,
     }),
 
   resetRun: () =>
@@ -112,7 +116,10 @@ export const usePipelineStore = create<PipelineStore>((set) => ({
       detailPanelFocus: null,
       reviewDecision: 'pending',
       reviewRationale: '',
+      autoRunEnabled: false,
     }),
+
+  setAutoRunEnabled: (enabled) => set({ autoRunEnabled: enabled }),
 
   setNodeStatus: (stage, status) =>
     set((s) => ({ nodeStatus: { ...s.nodeStatus, [stage]: status } })),

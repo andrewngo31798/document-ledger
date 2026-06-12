@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useCallback, useMemo, useEffect, useRef } from 'react'
 import {
   ReactFlow,
   Background,
@@ -97,7 +97,8 @@ function PipelineFlowInner() {
   const beat = useDemoNarration()
   const setDetailPanelFocus = usePipelineStore((s) => s.setDetailPanelFocus)
   const analysisExpanded = usePipelineStore((s) => s.analysisExpanded)
-  const [isRunning, setIsRunning] = useState(false)
+  const autoRunEnabled = usePipelineStore((s) => s.autoRunEnabled)
+  const setAutoRunEnabled = usePipelineStore((s) => s.setAutoRunEnabled)
 
   const runStages = stagesForPath(primaryPath)
   const totalStages = runStages.length
@@ -113,19 +114,19 @@ function PipelineFlowInner() {
 
   // Auto-run driver (view-layer only): walk stages while running, pausing at the human step.
   useEffect(() => {
-    if (!isRunning) return
+    if (!autoRunEnabled) return
     if (!activeStage) return
-    if (activeStage === 'review-portal') return // human pause — resumes after Approve
+    if (activeStage === 'review-portal') return // human pause — resumes via handleApprove
     if (activeStatus !== 'idle') return
-    const t = setTimeout(() => advanceRef.current(), 3000)
+    const t = setTimeout(() => advanceRef.current(), 500)
     return () => clearTimeout(t)
-  }, [isRunning, activeStage, activeStatus])
+  }, [autoRunEnabled, activeStage, activeStatus])
 
   function runDemo() {
-    setIsRunning(true)
+    setAutoRunEnabled(true)
   }
   function reset() {
-    setIsRunning(false)
+    setAutoRunEnabled(false)
     if (runConfig) startRun(runConfig)
   }
 
@@ -189,12 +190,12 @@ function PipelineFlowInner() {
   }, [stageOutputs, setDetailPanelFocus])
 
   // Status bar content
-  const dotColor = isComplete ? 'var(--accent-output)' : isRunning ? 'var(--accent-processing)' : 'var(--color-text-tertiary)'
+  const dotColor = isComplete ? 'var(--accent-output)' : autoRunEnabled ? 'var(--accent-processing)' : 'var(--color-text-tertiary)'
   const statusText = isHalted
     ? 'Pipeline halted — decision rejected.'
     : isComplete
       ? 'Pipeline complete.'
-      : isRunning && activeStage
+      : autoRunEnabled && activeStage
         ? `Running — ${STAGE_LABEL[activeStage]}`
         : 'Ready to run.'
 
@@ -209,7 +210,7 @@ function PipelineFlowInner() {
               Watch a decision move from raw signal to verified knowledge.
             </p>
           </div>
-          {!isRunning && !isComplete && !isHalted && (
+          {!autoRunEnabled && !isComplete && !isHalted && (
             <button onClick={runDemo} style={{
               background: 'var(--accent-processing)', color: '#faf9f5', border: 'none',
               borderRadius: 'var(--radius-md)', padding: '8px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
@@ -220,14 +221,14 @@ function PipelineFlowInner() {
         {/* Status bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
           <span
-            className={isRunning && !isComplete ? 'pulse-ring' : undefined}
+            className={autoRunEnabled && !isComplete ? 'pulse-ring' : undefined}
             style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }}
           />
           <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{statusText}</span>
           <span className="font-mono" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
             {completedCount} of {totalStages}
           </span>
-          {(isRunning || completedCount > 0) && (
+          {(autoRunEnabled || completedCount > 0) && (
             <button onClick={reset} style={{
               background: 'transparent', color: 'var(--color-text-secondary)',
               border: '0.5px solid var(--color-border-secondary)', borderRadius: 'var(--radius-md)',

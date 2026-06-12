@@ -57,7 +57,7 @@ function Field({ label, value }: { label: string; value: unknown }) {
 function ConsumerApiFields({ output }: { output: ConsumerApiOutput }) {
   return (
     <>
-      <Field label="query" value={output.query} />
+      <Field label="prompt" value={output.prompt} />
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 10, fontWeight: 500, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
           answer

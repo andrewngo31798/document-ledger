@@ -25,12 +25,27 @@ function markSkipped(
   }
 }
 
+async function completeConsumerApi(
+  store: ReturnType<typeof usePipelineStore.getState>,
+  ledgerId: string,
+  changePreviewId?: string,
+) {
+  store.setNodeStatus('consumer-api', 'processing')
+  const out = await pipelineService.runConsumerApi(ledgerId, changePreviewId)
+  store.setStageOutput('consumer-api', out)
+  store.setNodeStatus('consumer-api', 'complete')
+  store.setDetailPanelFocus({ stage: 'consumer-api' })
+  store.setActiveStage(null)
+}
+
 export function usePipelineRunner() {
   const store = usePipelineStore()
 
   const advanceStage = useCallback(async () => {
-    const { activeStage, runConfig, stageOutputs, primaryPath } = usePipelineStore.getState()
+    const { activeStage, runConfig, stageOutputs, primaryPath, nodeStatus } = usePipelineStore.getState()
     if (!activeStage || !runConfig) return
+    if (activeStage === 'review-portal') return
+    if (nodeStatus[activeStage] === 'complete') return
 
     store.setNodeStatus(activeStage, 'processing')
 
@@ -81,7 +96,7 @@ export function usePipelineRunner() {
           const out = await pipelineService.runForecastEngine(kp?.knowledge_id ?? '')
           store.setStageOutput('forecast-engine', out)
           store.setNodeStatus('forecast-engine', 'complete')
-          store.setActiveStage('consumer-api')
+          await completeConsumerApi(store, '', out.change_preview_id)
           break
         }
         case 'analysis-engine': {
@@ -134,19 +149,17 @@ export function usePipelineRunner() {
           const out = await pipelineService.runDecisionLedger(stageOutputs['analysis-engine'])
           store.setStageOutput('decision-ledger', out)
           store.setNodeStatus('decision-ledger', 'complete')
-          store.setActiveStage('consumer-api')
+          await completeConsumerApi(store, out.id)
           break
         }
         case 'consumer-api': {
           const ledger = stageOutputs['decision-ledger'] as { id: string } | undefined
           const changePreview = stageOutputs['forecast-engine'] as { change_preview_id: string } | undefined
-          const out = await pipelineService.runConsumerApi(
+          await completeConsumerApi(
+            store,
             ledger?.id ?? '',
             changePreview?.change_preview_id,
           )
-          store.setStageOutput('consumer-api', out)
-          store.setNodeStatus('consumer-api', 'complete')
-          store.setActiveStage(null)
           break
         }
       }
@@ -165,7 +178,8 @@ export function usePipelineRunner() {
     store.setReviewDecision('approved', rationale)
     store.setNodeStatus('review-portal', 'complete')
     store.setActiveStage('decision-ledger')
-  }, [store])
+    await advanceStage()
+  }, [store, advanceStage])
 
   const handleReject = useCallback(async (rationale: string) => {
     const { stageOutputs } = usePipelineStore.getState()
